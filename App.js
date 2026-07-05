@@ -13,9 +13,11 @@ import HomeScreen from './screens/HomeScreen';
 import NewWordScreen from './screens/NewWordScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 export default function App() {
   const [screen, setScreen] = useState('onboarding');
+  const [preferences, setPreferences] = useState(null);
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -29,10 +31,34 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {screen === 'onboarding' && (
-        <OnboardingScreen onContinue={() => setScreen('home')} />
+        <OnboardingScreen
+          onContinue={(prefs) => {
+            setPreferences(prefs);
+            setScreen('home');
+          }}
+        />
       )}
       {screen === 'home' && (
-        <HomeScreen onStart={() => setScreen('newWord')} />
+        <HomeScreen
+          onStart={() => setScreen('newWord')}
+          onTabPress={(tab) => {
+            if (tab === 'settings') {
+              setScreen('settings');
+            }
+          }}
+        />
+      )}
+      {screen === 'settings' && (
+        <SettingsScreen
+          preferences={preferences}
+          onPreferencesChange={setPreferences}
+          onBack={() => setScreen('home')}
+          onTabPress={(tab) => {
+            if (tab === 'home') {
+              setScreen('home');
+            }
+          }}
+        />
       )}
       {screen === 'newWord' && (
         <NewWordScreen

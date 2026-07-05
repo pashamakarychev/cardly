@@ -3,38 +3,9 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../components/Button';
-import Chip from '../components/Chip';
+import ChipSection from '../components/ChipSection';
+import { LANGUAGES, LEVELS, WORDS_PER_DAY } from '../constants/preferences';
 import { colors, typography } from '../theme';
-
-const LANGUAGES = [
-  'English',
-  'Spanish',
-  'French',
-  'German',
-  'Japanese',
-  'Ukrainian',
-  'Russian',
-];
-const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
-const WORDS_PER_DAY = ['5', '10', '15', '20'];
-
-function ChipSection({ label, options, selected, onSelect }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <View style={styles.options}>
-        {options.map((option) => (
-          <Chip
-            key={option}
-            label={option}
-            selected={option === selected}
-            onPress={() => onSelect(option)}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
 
 export default function OnboardingScreen({ onContinue }) {
   const insets = useSafeAreaInsets();
@@ -109,19 +80,6 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 24,
-  },
-  section: {
-    gap: 16,
-  },
-  sectionLabel: {
-    ...typography.h3,
-    color: colors.textPrimary,
-  },
-  options: {
-    columnGap: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 12,
   },
   footer: {
     paddingHorizontal: 16,
