@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors, typography } from '../theme';
 
-export default function Button({ title, onPress, variant = 'primary', style }) {
+// status ('correct' | 'incorrect') shows answer feedback on secondary buttons
+export default function Button({ title, onPress, variant = 'primary', status, style }) {
   const secondary = variant === 'secondary';
   return (
     <Pressable
@@ -11,6 +12,8 @@ export default function Button({ title, onPress, variant = 'primary', style }) {
         styles.button,
         secondary && styles.buttonSecondary,
         pressed && (secondary ? styles.secondaryPressed : styles.primaryPressed),
+        status === 'correct' && styles.correct,
+        status === 'incorrect' && styles.incorrect,
         style,
       ]}
     >
@@ -38,6 +41,12 @@ const styles = StyleSheet.create({
   },
   secondaryPressed: {
     backgroundColor: colors.surface,
+  },
+  correct: {
+    backgroundColor: colors.success,
+  },
+  incorrect: {
+    backgroundColor: colors.error,
   },
   title: {
     ...typography.button,

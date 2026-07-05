@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
 import NewWordScreen from './screens/NewWordScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -38,8 +39,18 @@ export default function App() {
           nextWord="Adiós"
           progress={0.3}
           onClose={() => setScreen('home')}
-          onLearn={() => {}}
-          onAlreadyKnow={() => {}}
+          onLearn={() => setScreen('exercise')}
+          onAlreadyKnow={() => setScreen('exercise')}
+        />
+      )}
+      {screen === 'exercise' && (
+        <ExerciseScreen
+          word="Hola"
+          nextWord="Adiós"
+          options={['Hello', 'Book', 'City', 'Food']}
+          correctAnswer="Hello"
+          progress={0.3}
+          onClose={() => setScreen('home')}
         />
       )}
       <StatusBar style="dark" />
