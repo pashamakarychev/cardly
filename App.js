@@ -5,9 +5,9 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { colors, typography } from './theme';
+import OnboardingScreen from './screens/OnboardingScreen';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -21,18 +21,9 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={[typography.h1, { color: colors.textPrimary }]}>Cardly</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <OnboardingScreen />
+      <StatusBar style="dark" />
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
