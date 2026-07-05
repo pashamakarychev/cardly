@@ -12,6 +12,7 @@ import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
 import NewWordScreen from './screens/NewWordScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import SessionCompleteScreen from './screens/SessionCompleteScreen';
 
 export default function App() {
   const [screen, setScreen] = useState('onboarding');
@@ -51,6 +52,16 @@ export default function App() {
           correctAnswer="Hello"
           progress={0.3}
           onClose={() => setScreen('home')}
+          onAnswer={() => {
+            setTimeout(() => setScreen('sessionComplete'), 800);
+          }}
+        />
+      )}
+      {screen === 'sessionComplete' && (
+        <SessionCompleteScreen
+          newWords={10}
+          wordsReviewed={0}
+          onHome={() => setScreen('home')}
         />
       )}
       <StatusBar style="dark" />
