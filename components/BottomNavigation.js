@@ -38,6 +38,7 @@ export default function BottomNavigation({ activeTab, onTabPress }) {
       >
         <IconComponent size={24} color={colors.textPrimary} />
         <Text
+          numberOfLines={1}
           style={[
             active ? typography.navActive : typography.navInactive,
             styles.label,
@@ -79,14 +80,15 @@ const styles = StyleSheet.create({
     gap: 4,
     height: 56,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    minWidth: 80,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    width: 80,
   },
   itemActive: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   label: {
     color: colors.textPrimary,
+    textAlign: 'center',
   },
 });
