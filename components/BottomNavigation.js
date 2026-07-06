@@ -1,10 +1,9 @@
-import { BlurView } from 'expo-blur';
 import {
   GlassView,
   isGlassEffectAPIAvailable,
   isLiquidGlassAvailable,
 } from 'expo-glass-effect';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
 import { HomeFillIcon, HomeIcon } from './icons/HomeIcon';
@@ -58,17 +57,7 @@ export default function BottomNavigation({ activeTab, onTabPress }) {
     );
   }
 
-  // Frosted-glass fallback for Android and iOS < 26
-  return (
-    <BlurView
-      intensity={40}
-      tint="light"
-      experimentalBlurMethod="dimezisBlurView"
-      style={[styles.container, styles.containerBlur]}
-    >
-      {items}
-    </BlurView>
-  );
+  return <View style={[styles.container, styles.containerDefault]}>{items}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -81,9 +70,8 @@ const styles = StyleSheet.create({
     height: 64,
     padding: 4,
   },
-  containerBlur: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    overflow: 'hidden',
+  containerDefault: {
+    backgroundColor: colors.background,
   },
   item: {
     alignItems: 'center',
