@@ -4,10 +4,12 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { DATABASE_NAME, migrateDbIfNeeded } from './db/database';
 import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
 import NewWordScreen from './screens/NewWordScreen';
@@ -15,21 +17,15 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
-export default function App() {
+// Screen state must live inside SQLiteProvider's children. The provider is
+// memoized without comparing children, so updating screens from the parent
+// would not trigger a re-render.
+function AppContent() {
   const [screen, setScreen] = useState('onboarding');
   const [preferences, setPreferences] = useState(null);
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_700Bold,
-  });
-
-  if (!fontsLoaded) {
-    return null;
-  }
 
   return (
-    <SafeAreaProvider>
+    <>
       {screen === 'onboarding' && (
         <OnboardingScreen
           onContinue={(prefs) => {
@@ -91,6 +87,26 @@ export default function App() {
         />
       )}
       <StatusBar style="dark" />
+    </>
+  );
+}
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  return (
+    <SafeAreaProvider>
+      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
+        <AppContent />
+      </SQLiteProvider>
     </SafeAreaProvider>
   );
 }
