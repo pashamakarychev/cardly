@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../components/Button';
 import ChipSection from '../components/ChipSection';
-import { LANGUAGES, LEVELS, WORDS_PER_DAY } from '../constants/preferences';
+import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { completeOnboarding } from '../db/settings';
 import { colors, typography } from '../theme';
 
@@ -68,14 +68,14 @@ export default function OnboardingScreen({ onContinue }) {
         <View style={styles.content}>
           <ChipSection
             label="I speak"
-            options={LANGUAGES}
+            options={SPEAK_LANGUAGES}
             selected={speaks}
             onSelect={handleSpeaksSelect}
             disabledOptions={learning ? [learning] : []}
           />
           <ChipSection
             label="I want to learn"
-            options={LANGUAGES}
+            options={LEARN_LANGUAGES}
             selected={learning}
             onSelect={handleLearningSelect}
             disabledOptions={speaks ? [speaks] : []}

@@ -6,7 +6,12 @@ import BottomNavigation from '../components/BottomNavigation';
 import ChipSection from '../components/ChipSection';
 import IconButton from '../components/IconButton';
 import { ChevronLeftIcon } from '../components/icons/ChevronLeftIcon';
-import { LANGUAGES, LEVELS, WORDS_PER_DAY } from '../constants/preferences';
+import {
+  LEARN_LANGUAGES,
+  LEVELS,
+  SPEAK_LANGUAGES,
+  WORDS_PER_DAY,
+} from '../constants/preferences';
 import { colors, typography } from '../theme';
 
 export default function SettingsScreen({
@@ -41,7 +46,7 @@ export default function SettingsScreen({
         <View style={styles.content}>
           <ChipSection
             label="I speak"
-            options={LANGUAGES}
+            options={SPEAK_LANGUAGES}
             selected={speaks}
             onSelect={(value) => {
               setSpeaks(value);
@@ -50,7 +55,7 @@ export default function SettingsScreen({
           />
           <ChipSection
             label="I want to learn"
-            options={LANGUAGES}
+            options={LEARN_LANGUAGES}
             selected={learning}
             onSelect={(value) => {
               setLearning(value);
