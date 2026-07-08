@@ -7,6 +7,7 @@ export const palette = {
 
   azure100: '#3B82F6',
   azure200: '#385FEB',
+  azure50: '#ABC7F5',
 
   gray100: '#F0EFF6',
   gray200: '#E6E4EB',
@@ -32,6 +33,7 @@ export const colors = {
 
   primary: palette.azure100,
   primaryPressed: palette.azure200,
+  primaryDisabled: palette.azure50,
 
   success: palette.green,
   error: palette.red,

@@ -3,7 +3,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors, typography } from '../theme';
 import Chip from './Chip';
 
-export default function ChipSection({ label, options, selected, onSelect }) {
+export default function ChipSection({
+  label,
+  options,
+  selected,
+  onSelect,
+  disabledOptions = [],
+}) {
   return (
     <View style={styles.section}>
       <Text style={styles.label}>{label}</Text>
@@ -13,6 +19,7 @@ export default function ChipSection({ label, options, selected, onSelect }) {
             key={option}
             label={option}
             selected={option === selected}
+            disabled={disabledOptions.includes(option)}
             onPress={() => onSelect(option)}
           />
         ))}

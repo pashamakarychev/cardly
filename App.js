@@ -4,12 +4,13 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { SQLiteProvider } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { DATABASE_NAME, migrateDbIfNeeded } from './db/database';
+import { DATABASE_NAME, initDb } from './db/database';
+import { getSettings } from './db/settings';
 import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
 import NewWordScreen from './screens/NewWordScreen';
@@ -21,8 +22,34 @@ import SettingsScreen from './screens/SettingsScreen';
 // memoized without comparing children, so updating screens from the parent
 // would not trigger a re-render.
 function AppContent() {
-  const [screen, setScreen] = useState('onboarding');
+  const db = useSQLiteContext();
+  const [screen, setScreen] = useState(null);
   const [preferences, setPreferences] = useState(null);
+
+  useEffect(() => {
+    async function loadInitialScreen() {
+      const settings = await getSettings(db);
+
+      if (settings?.onboarding_completed === 1) {
+        setPreferences({
+          speaks: settings.native_language,
+          learning: settings.learning_language,
+          level: settings.level,
+          wordsPerDay: String(settings.new_words_per_day),
+        });
+        setScreen('home');
+        return;
+      }
+
+      setScreen('onboarding');
+    }
+
+    loadInitialScreen();
+  }, [db]);
+
+  if (screen == null) {
+    return null;
+  }
 
   return (
     <>
@@ -104,7 +131,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
+      <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDb}>
         <AppContent />
       </SQLiteProvider>
     </SafeAreaProvider>

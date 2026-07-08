@@ -1,3 +1,4 @@
+import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,14 +6,56 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import ChipSection from '../components/ChipSection';
 import { LANGUAGES, LEVELS, WORDS_PER_DAY } from '../constants/preferences';
+import { completeOnboarding } from '../db/settings';
 import { colors, typography } from '../theme';
 
 export default function OnboardingScreen({ onContinue }) {
+  const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const [speaks, setSpeaks] = useState(null);
   const [learning, setLearning] = useState(null);
   const [level, setLevel] = useState(null);
   const [wordsPerDay, setWordsPerDay] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSpeaksSelect = (value) => {
+    setSpeaks(value);
+    if (value === learning) {
+      setLearning(null);
+    }
+  };
+
+  const handleLearningSelect = (value) => {
+    setLearning(value);
+    if (value === speaks) {
+      setSpeaks(null);
+    }
+  };
+
+  const isComplete =
+    speaks != null &&
+    learning != null &&
+    level != null &&
+    wordsPerDay != null;
+
+  const handleContinue = async () => {
+    if (!isComplete || saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await completeOnboarding(db, {
+        nativeLanguage: speaks,
+        learningLanguage: learning,
+        level,
+        newWordsPerDay: Number(wordsPerDay),
+      });
+      onContinue?.({ speaks, learning, level, wordsPerDay });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 19 }]}>
@@ -27,13 +70,15 @@ export default function OnboardingScreen({ onContinue }) {
             label="I speak"
             options={LANGUAGES}
             selected={speaks}
-            onSelect={setSpeaks}
+            onSelect={handleSpeaksSelect}
+            disabledOptions={learning ? [learning] : []}
           />
           <ChipSection
             label="I want to learn"
             options={LANGUAGES}
             selected={learning}
-            onSelect={setLearning}
+            onSelect={handleLearningSelect}
+            disabledOptions={speaks ? [speaks] : []}
           />
           <ChipSection
             label="My level"
@@ -52,9 +97,8 @@ export default function OnboardingScreen({ onContinue }) {
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Button
           title="Continue"
-          onPress={() =>
-            onContinue?.({ speaks, learning, level, wordsPerDay })
-          }
+          disabled={!isComplete || saving}
+          onPress={handleContinue}
         />
       </View>
     </View>

@@ -3,21 +3,40 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { colors, typography } from '../theme';
 
 // status ('correct' | 'incorrect') shows answer feedback on secondary buttons
-export default function Button({ title, onPress, variant = 'primary', status, style }) {
+export default function Button({
+  title,
+  onPress,
+  variant = 'primary',
+  status,
+  disabled = false,
+  style,
+}) {
   const secondary = variant === 'secondary';
+  const showFeedback = status === 'correct' || status === 'incorrect';
+
   return (
     <Pressable
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
         secondary && styles.buttonSecondary,
-        pressed && (secondary ? styles.secondaryPressed : styles.primaryPressed),
-        status === 'correct' && styles.correct,
-        status === 'incorrect' && styles.incorrect,
+        disabled && (secondary ? styles.secondaryDisabled : styles.primaryDisabled),
+        !disabled &&
+          pressed &&
+          (secondary ? styles.secondaryPressed : styles.primaryPressed),
+        showFeedback && status === 'correct' && styles.correct,
+        showFeedback && status === 'incorrect' && styles.incorrect,
         style,
       ]}
     >
-      <Text style={[styles.title, secondary && styles.titleSecondary]}>
+      <Text
+        style={[
+          styles.title,
+          secondary && styles.titleSecondary,
+          disabled && secondary && styles.titleSecondaryDisabled,
+        ]}
+      >
         {title}
       </Text>
     </Pressable>
@@ -35,6 +54,12 @@ const styles = StyleSheet.create({
   },
   buttonSecondary: {
     backgroundColor: colors.background,
+  },
+  primaryDisabled: {
+    backgroundColor: colors.primaryDisabled,
+  },
+  secondaryDisabled: {
+    backgroundColor: colors.surfaceSubtle,
   },
   primaryPressed: {
     backgroundColor: colors.primaryPressed,
@@ -54,5 +79,8 @@ const styles = StyleSheet.create({
   },
   titleSecondary: {
     color: colors.textPrimary,
+  },
+  titleSecondaryDisabled: {
+    color: colors.textSecondary,
   },
 });
