@@ -18,6 +18,7 @@ export async function initDb(db) {
 
     CREATE TABLE IF NOT EXISTS words (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      language TEXT NOT NULL,
       level TEXT NOT NULL,
       text TEXT NOT NULL
     );
