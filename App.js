@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { DATABASE_NAME, initDb } from './db/database';
+import { DATABASE_ASSET, DATABASE_NAME, initDb } from './db/database';
 import { getSettings } from './db/settings';
 import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -131,7 +131,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SQLiteProvider databaseName={DATABASE_NAME} onInit={initDb}>
+      <SQLiteProvider
+        databaseName={DATABASE_NAME}
+        assetSource={{ assetId: DATABASE_ASSET }}
+        onInit={initDb}
+      >
         <AppContent />
       </SQLiteProvider>
     </SafeAreaProvider>
