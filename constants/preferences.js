@@ -3,6 +3,11 @@ export const SPEAK_LANGUAGES = [
   'Spanish',
   'French',
   'German',
+  'Italian',
+  'Portuguese',
+  'Chinese',
+  'Japanese',
+  'Korean',
   'Ukrainian',
   'Russian',
 ];
@@ -12,6 +17,10 @@ export const LEARN_LANGUAGES = [
   'Spanish',
   'French',
   'German',
+  'Japanese',
+  'Korean',
+  'Italian',
+  'Chinese',
 ];
 
 export const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
