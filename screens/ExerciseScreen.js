@@ -19,24 +19,32 @@ export default function ExerciseScreen({
   onAnswer,
 }) {
   const insets = useSafeAreaInsets();
-  const [chosen, setChosen] = useState(null);
+  const [wrongOptions, setWrongOptions] = useState([]);
+  const [resolved, setResolved] = useState(false);
 
   const handleAnswer = (option) => {
-    if (chosen != null) {
+    if (resolved || wrongOptions.includes(option)) {
       return;
     }
-    setChosen(option);
-    onAnswer?.(option === correctAnswer);
+
+    if (option !== correctAnswer) {
+      setWrongOptions((current) => [...current, option]);
+      return;
+    }
+
+    const firstAttemptCorrect = wrongOptions.length === 0;
+    setResolved(true);
+    onAnswer?.(firstAttemptCorrect);
   };
 
   const statusFor = (option) => {
-    if (chosen == null) {
-      return undefined;
+    if (wrongOptions.includes(option)) {
+      return 'incorrect';
     }
-    if (option === correctAnswer) {
+    if (resolved && option === correctAnswer) {
       return 'correct';
     }
-    return option === chosen ? 'incorrect' : undefined;
+    return undefined;
   };
 
   return (

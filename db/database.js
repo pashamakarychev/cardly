@@ -9,6 +9,7 @@ export const WORD_STATES = {
   NEW: 'NEW',
   LEARNING: 'LEARNING',
   LEARNED: 'LEARNED',
+  KNOWN: 'KNOWN',
 };
 
 export async function initDb(db) {

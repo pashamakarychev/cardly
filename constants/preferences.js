@@ -23,6 +23,20 @@ export const LEARN_LANGUAGES = [
   'Chinese',
 ];
 
+export const LANGUAGE_CODES = {
+  English: 'en',
+  Spanish: 'es',
+  French: 'fr',
+  German: 'de',
+  Italian: 'it',
+  Portuguese: 'pt',
+  Chinese: 'zh',
+  Japanese: 'jp',
+  Korean: 'ko',
+  Ukrainian: 'uk',
+  Russian: 'ru',
+};
+
 export const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
 
 export const WORDS_PER_DAY = ['5', '10', '15', '20'];

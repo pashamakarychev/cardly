@@ -9,7 +9,19 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { DATABASE_ASSET, DATABASE_NAME, initDb } from './db/database';
+import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
+import {
+  EXERCISE_SOURCES,
+  STEP_TYPES,
+  addToActiveWords,
+  addToLearningProgress,
+  advanceActivePosition,
+  decreaseInterval,
+  getNextStep,
+  increaseInterval,
+  incrementWordsAddedToday,
+  recordCorrectAnswer,
+} from './db/learning';
 import { getSettings } from './db/settings';
 import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -25,6 +37,8 @@ function AppContent() {
   const db = useSQLiteContext();
   const [screen, setScreen] = useState(null);
   const [preferences, setPreferences] = useState(null);
+  const [currentWord, setCurrentWord] = useState(null);
+  const [newWord, setNewWord] = useState(null);
 
   useEffect(() => {
     async function loadInitialScreen() {
@@ -47,6 +61,76 @@ function AppContent() {
     loadInitialScreen();
   }, [db]);
 
+  // What to show next (exercise, new word, or session complete) is decided
+  // by getNextStep in db/learning.js; this only maps the step to a screen.
+  const continueSession = async () => {
+    const step = await getNextStep(db, {
+      nativeLanguageName: preferences?.speaks,
+      learningLanguageName: preferences?.learning,
+      levelName: preferences?.level,
+    });
+
+    if (step.type === STEP_TYPES.EXERCISE) {
+      setCurrentWord(step.exercise);
+      setScreen('exercise');
+      return;
+    }
+
+    if (step.type === STEP_TYPES.NEW_WORD) {
+      setNewWord(step.word);
+      setScreen('newWord');
+      return;
+    }
+
+    setScreen('sessionComplete');
+  };
+
+  const handleStart = async () => {
+    await continueSession();
+  };
+
+  const handleExerciseAnswer = async (firstAttemptCorrect) => {
+    if (currentWord?.id == null) {
+      await continueSession();
+      return;
+    }
+
+    if (currentWord.source === EXERCISE_SOURCES.REVIEW) {
+      if (firstAttemptCorrect) {
+        await increaseInterval(db, currentWord.id);
+      } else {
+        await decreaseInterval(db, currentWord.id);
+        await addToActiveWords(db, currentWord.id);
+      }
+    } else {
+      // Active-queue drills only update streak; interval stays unchanged.
+      if (firstAttemptCorrect) {
+        await recordCorrectAnswer(db, currentWord.id);
+      }
+      await advanceActivePosition(db);
+    }
+
+    await continueSession();
+  };
+
+  const handleLearn = async () => {
+    if (newWord?.id == null) {
+      return;
+    }
+    await addToLearningProgress(db, newWord.id, WORD_STATES.LEARNING);
+    await addToActiveWords(db, newWord.id);
+    await incrementWordsAddedToday(db);
+    await continueSession();
+  };
+
+  const handleAlreadyKnow = async () => {
+    if (newWord?.id == null) {
+      return;
+    }
+    await addToLearningProgress(db, newWord.id, WORD_STATES.KNOWN);
+    await continueSession();
+  };
+
   if (screen == null) {
     return null;
   }
@@ -63,7 +147,7 @@ function AppContent() {
       )}
       {screen === 'home' && (
         <HomeScreen
-          onStart={() => setScreen('newWord')}
+          onStart={handleStart}
           onTabPress={(tab) => {
             if (tab === 'settings') {
               setScreen('settings');
@@ -83,26 +167,28 @@ function AppContent() {
           }}
         />
       )}
-      {screen === 'newWord' && (
+      {screen === 'newWord' && newWord != null && (
         <NewWordScreen
-          word="Hola"
-          nextWord="Adiós"
+          key={newWord.id}
+          word={newWord.text}
           progress={0.3}
           onClose={() => setScreen('home')}
-          onLearn={() => setScreen('exercise')}
-          onAlreadyKnow={() => setScreen('exercise')}
+          onLearn={handleLearn}
+          onAlreadyKnow={handleAlreadyKnow}
         />
       )}
-      {screen === 'exercise' && (
+      {screen === 'exercise' && currentWord != null && (
         <ExerciseScreen
-          word="Hola"
-          nextWord="Adiós"
-          options={['Hello', 'Book', 'City', 'Food']}
-          correctAnswer="Hello"
+          key={`${currentWord.source}-${currentWord.id}-${currentWord.position ?? 'review'}`}
+          word={currentWord.text}
+          options={currentWord.options}
+          correctAnswer={currentWord.correctAnswer}
           progress={0.3}
           onClose={() => setScreen('home')}
-          onAnswer={() => {
-            setTimeout(() => setScreen('sessionComplete'), 800);
+          onAnswer={(firstAttemptCorrect) => {
+            setTimeout(() => {
+              handleExerciseAnswer(firstAttemptCorrect);
+            }, 800);
           }}
         />
       )}
