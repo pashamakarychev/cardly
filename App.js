@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
+import { getSettings } from './db/settings';
 import {
   EXERCISE_SOURCES,
   STEP_TYPES,
@@ -21,8 +22,18 @@ import {
   increaseInterval,
   incrementWordsAddedToday,
   recordCorrectAnswer,
-} from './db/learning';
-import { getSettings } from './db/settings';
+  recordIncorrectAnswer,
+} from './learning/learning';
+import {
+  onActiveCorrect,
+  onActiveIncorrect,
+  onAlreadyKnow,
+  onLearnWord,
+  onReviewCorrect,
+  onReviewIncorrect,
+  resetSessionProgress,
+  syncSessionProgress,
+} from './learning/sessionProgress';
 import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
 import NewWordScreen from './screens/NewWordScreen';
@@ -39,6 +50,7 @@ function AppContent() {
   const [preferences, setPreferences] = useState(null);
   const [currentWord, setCurrentWord] = useState(null);
   const [newWord, setNewWord] = useState(null);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     async function loadInitialScreen() {
@@ -62,7 +74,7 @@ function AppContent() {
   }, [db]);
 
   // What to show next (exercise, new word, or session complete) is decided
-  // by getNextStep in db/learning.js; this only maps the step to a screen.
+  // by getNextStep in learning/learning.js; this only maps the step to a screen.
   const continueSession = async () => {
     const step = await getNextStep(db, {
       nativeLanguageName: preferences?.speaks,
@@ -82,10 +94,14 @@ function AppContent() {
       return;
     }
 
+    const session = await resetSessionProgress(db);
+    setProgress(session.progress);
     setScreen('sessionComplete');
   };
 
   const handleStart = async () => {
+    const session = await syncSessionProgress(db);
+    setProgress(session.progress);
     await continueSession();
   };
 
@@ -95,21 +111,33 @@ function AppContent() {
       return;
     }
 
+    let session;
+
     if (currentWord.source === EXERCISE_SOURCES.REVIEW) {
       if (firstAttemptCorrect) {
         await increaseInterval(db, currentWord.id);
+        session = await onReviewCorrect(db);
       } else {
         await decreaseInterval(db, currentWord.id);
         await addToActiveWords(db, currentWord.id);
+        session = await onReviewIncorrect(db);
       }
     } else {
       // Active-queue drills only update streak; interval stays unchanged.
       if (firstAttemptCorrect) {
         await recordCorrectAnswer(db, currentWord.id);
+        session = await onActiveCorrect(db);
+      } else {
+        const streakBeforeMistake = currentWord.correct_streak ?? 0;
+        await recordIncorrectAnswer(db, currentWord.id);
+        session = await onActiveIncorrect(db, streakBeforeMistake);
       }
       await advanceActivePosition(db);
     }
 
+    if (session != null) {
+      setProgress(session.progress);
+    }
     await continueSession();
   };
 
@@ -120,6 +148,8 @@ function AppContent() {
     await addToLearningProgress(db, newWord.id, WORD_STATES.LEARNING);
     await addToActiveWords(db, newWord.id);
     await incrementWordsAddedToday(db);
+    const session = await onLearnWord(db);
+    setProgress(session.progress);
     await continueSession();
   };
 
@@ -128,6 +158,8 @@ function AppContent() {
       return;
     }
     await addToLearningProgress(db, newWord.id, WORD_STATES.KNOWN);
+    const session = await onAlreadyKnow(db);
+    setProgress(session.progress);
     await continueSession();
   };
 
@@ -171,7 +203,7 @@ function AppContent() {
         <NewWordScreen
           key={newWord.id}
           word={newWord.text}
-          progress={0.3}
+          progress={progress}
           onClose={() => setScreen('home')}
           onLearn={handleLearn}
           onAlreadyKnow={handleAlreadyKnow}
@@ -183,7 +215,7 @@ function AppContent() {
           word={currentWord.text}
           options={currentWord.options}
           correctAnswer={currentWord.correctAnswer}
-          progress={0.3}
+          progress={progress}
           onClose={() => setScreen('home')}
           onAnswer={(firstAttemptCorrect) => {
             setTimeout(() => {

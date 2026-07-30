@@ -1,7 +1,7 @@
 // Learning-session helpers: picking the next word to show, answer options, etc.
 
 import { LANGUAGE_CODES } from '../constants/preferences';
-import { WORD_STATES } from './database';
+import { WORD_STATES } from '../db/database';
 
 export const SESSION_KEYS = {
   ACTIVE_POSITION: 'active_position',
@@ -124,6 +124,20 @@ export async function incrementWordsAddedToday(db) {
   return current + 1;
 }
 
+/** How many new words can still be added today given settings + session counters. */
+export async function getNewWordsRemainingToday(db) {
+  const settings = await db.getFirstAsync(
+    'SELECT new_words_per_day FROM settings WHERE id = 1'
+  );
+  const dailyLimit = Number(settings?.new_words_per_day);
+  if (!Number.isFinite(dailyLimit)) {
+    return 0;
+  }
+
+  const wordsAddedToday = await getWordsAddedToday(db);
+  return Math.max(0, dailyLimit - wordsAddedToday);
+}
+
 /** Size of the active learning pool. */
 export const ACTIVE_WORDS_TARGET = 3;
 
@@ -173,13 +187,7 @@ export async function getNextStep(
     return { type: STEP_TYPES.EXERCISE, exercise: review };
   }
 
-  const settings = await db.getFirstAsync(
-    'SELECT new_words_per_day FROM settings WHERE id = 1'
-  );
-  const dailyLimit = Number(settings?.new_words_per_day);
-  const wordsAddedToday = await getWordsAddedToday(db);
-
-  if (Number.isFinite(dailyLimit) && wordsAddedToday < dailyLimit) {
+  if ((await getNewWordsRemainingToday(db)) > 0) {
     const word = await getRandomNewWord(db, learningLanguageName, levelName);
     if (word != null) {
       return { type: STEP_TYPES.NEW_WORD, word };
@@ -292,6 +300,18 @@ export async function recordCorrectAnswer(db, wordId) {
   return { removed: false, correctStreak: row?.correct_streak ?? 0 };
 }
 
+/** Resets correct_streak after an incorrect first attempt on an active word. */
+export async function recordIncorrectAnswer(db, wordId) {
+  await db.runAsync(
+    `
+      UPDATE active_words
+      SET correct_streak = 0
+      WHERE word_id = ?
+    `,
+    wordId
+  );
+}
+
 /**
  * Builds one correct translation + 3 incorrect ones for the exercise.
  * Incorrect options are random translations of other words with the same
@@ -373,11 +393,11 @@ export async function loadExercise(db, nativeLanguageName) {
 }
 
 /**
- * Due LEARNING word (next_review_at in the past), not currently in the
- * active pool.
+ * Due LEARNING words (next_review_at in the past), not currently in the
+ * active pool. Ordered by soonest due first.
  */
-export async function getDueLearningWord(db) {
-  return db.getFirstAsync(
+export async function getDueLearningWords(db) {
+  return db.getAllAsync(
     `
       SELECT
         w.id,
@@ -394,11 +414,16 @@ export async function getDueLearningWord(db) {
         AND lp.next_review_at < ?
         AND aw.word_id IS NULL
       ORDER BY lp.next_review_at ASC
-      LIMIT 1
     `,
     WORD_STATES.LEARNING,
     Date.now()
   );
+}
+
+/** Next due LEARNING word, or null if none. */
+export async function getDueLearningWord(db) {
+  const words = await getDueLearningWords(db);
+  return words[0] ?? null;
 }
 
 /** Loads a due review word together with shuffled answer options. */
