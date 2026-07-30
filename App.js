@@ -53,16 +53,22 @@ function AppContent() {
   const [currentWord, setCurrentWord] = useState(null);
   const [newWord, setNewWord] = useState(null);
   const [progress, setProgress] = useState(0);
-  const [homeStats, setHomeStats] = useState({ newWords: 0, wordsToReview: 0 });
+  const [homeStats, setHomeStats] = useState({
+    newWords: 0,
+    wordsToReview: 0,
+    activeWords: 0,
+  });
 
   const refreshHomeStats = async () => {
-    const [newWords, dueWords] = await Promise.all([
+    const [newWords, dueWords, activeCountRow] = await Promise.all([
       getNewWordsRemainingToday(db),
       getDueLearningWords(db),
+      db.getFirstAsync('SELECT COUNT(*) AS count FROM active_words'),
     ]);
     setHomeStats({
       newWords,
       wordsToReview: dueWords.length,
+      activeWords: activeCountRow?.count ?? 0,
     });
   };
 
@@ -201,6 +207,11 @@ function AppContent() {
         <HomeScreen
           newWords={homeStats.newWords}
           wordsToReview={homeStats.wordsToReview}
+          canStart={
+            homeStats.newWords > 0 ||
+            homeStats.wordsToReview > 0 ||
+            homeStats.activeWords > 0
+          }
           onStart={handleStart}
           onTabPress={(tab) => {
             if (tab === 'settings') {

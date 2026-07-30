@@ -9,6 +9,7 @@ import { colors, typography } from '../theme';
 export default function HomeScreen({
   newWords = 0,
   wordsToReview = 0,
+  canStart = false,
   onStart,
   onTabPress,
 }) {
@@ -27,7 +28,7 @@ export default function HomeScreen({
           <MetricRow label="New Words" value={String(newWords)} />
           <MetricRow label="Words to Review" value={String(wordsToReview)} />
         </View>
-        <Button title="Start" onPress={onStart} />
+        <Button title="Start" onPress={onStart} disabled={!canStart} />
       </View>
       <BottomNavigation activeTab="home" onTabPress={onTabPress} />
     </View>
