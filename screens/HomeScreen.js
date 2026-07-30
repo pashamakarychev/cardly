@@ -7,8 +7,8 @@ import MetricRow from '../components/MetricRow';
 import { colors, typography } from '../theme';
 
 export default function HomeScreen({
-  newWords = 10,
-  wordsForRepeat = 0,
+  newWords = 0,
+  wordsToReview = 0,
   onStart,
   onTabPress,
 }) {
@@ -25,7 +25,7 @@ export default function HomeScreen({
         <Text style={styles.title}>Study Session</Text>
         <View style={styles.metricsContainer}>
           <MetricRow label="New Words" value={String(newWords)} />
-          <MetricRow label="Word for Repeat" value={String(wordsForRepeat)} />
+          <MetricRow label="Words to Review" value={String(wordsToReview)} />
         </View>
         <Button title="Start" onPress={onStart} />
       </View>

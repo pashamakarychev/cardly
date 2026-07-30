@@ -18,6 +18,8 @@ import {
   addToLearningProgress,
   advanceActivePosition,
   decreaseInterval,
+  getDueLearningWords,
+  getNewWordsRemainingToday,
   getNextStep,
   increaseInterval,
   incrementWordsAddedToday,
@@ -51,6 +53,18 @@ function AppContent() {
   const [currentWord, setCurrentWord] = useState(null);
   const [newWord, setNewWord] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [homeStats, setHomeStats] = useState({ newWords: 0, wordsToReview: 0 });
+
+  const refreshHomeStats = async () => {
+    const [newWords, dueWords] = await Promise.all([
+      getNewWordsRemainingToday(db),
+      getDueLearningWords(db),
+    ]);
+    setHomeStats({
+      newWords,
+      wordsToReview: dueWords.length,
+    });
+  };
 
   useEffect(() => {
     async function loadInitialScreen() {
@@ -63,6 +77,7 @@ function AppContent() {
           level: settings.level,
           wordsPerDay: String(settings.new_words_per_day),
         });
+        await refreshHomeStats();
         setScreen('home');
         return;
       }
@@ -163,6 +178,11 @@ function AppContent() {
     await continueSession();
   };
 
+  const goHome = async () => {
+    await refreshHomeStats();
+    setScreen('home');
+  };
+
   if (screen == null) {
     return null;
   }
@@ -171,14 +191,16 @@ function AppContent() {
     <>
       {screen === 'onboarding' && (
         <OnboardingScreen
-          onContinue={(prefs) => {
+          onContinue={async (prefs) => {
             setPreferences(prefs);
-            setScreen('home');
+            await goHome();
           }}
         />
       )}
       {screen === 'home' && (
         <HomeScreen
+          newWords={homeStats.newWords}
+          wordsToReview={homeStats.wordsToReview}
           onStart={handleStart}
           onTabPress={(tab) => {
             if (tab === 'settings') {
@@ -191,10 +213,12 @@ function AppContent() {
         <SettingsScreen
           preferences={preferences}
           onPreferencesChange={setPreferences}
-          onBack={() => setScreen('home')}
+          onBack={() => {
+            goHome();
+          }}
           onTabPress={(tab) => {
             if (tab === 'home') {
-              setScreen('home');
+              goHome();
             }
           }}
         />
@@ -204,7 +228,9 @@ function AppContent() {
           key={newWord.id}
           word={newWord.text}
           progress={progress}
-          onClose={() => setScreen('home')}
+          onClose={() => {
+            goHome();
+          }}
           onLearn={handleLearn}
           onAlreadyKnow={handleAlreadyKnow}
         />
@@ -216,7 +242,9 @@ function AppContent() {
           options={currentWord.options}
           correctAnswer={currentWord.correctAnswer}
           progress={progress}
-          onClose={() => setScreen('home')}
+          onClose={() => {
+            goHome();
+          }}
           onAnswer={(firstAttemptCorrect) => {
             setTimeout(() => {
               handleExerciseAnswer(firstAttemptCorrect);
@@ -228,7 +256,9 @@ function AppContent() {
         <SessionCompleteScreen
           newWords={10}
           wordsReviewed={0}
-          onHome={() => setScreen('home')}
+          onHome={() => {
+            goHome();
+          }}
         />
       )}
       <StatusBar style="dark" />
