@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
 import { getSettings } from './db/settings';
 import {
+  ADDED_AS,
   EXERCISE_SOURCES,
   STEP_TYPES,
   addToActiveWords,
@@ -21,10 +22,13 @@ import {
   getDueLearningWords,
   getNewWordsRemainingToday,
   getNextStep,
+  getSessionStats,
   increaseInterval,
   incrementWordsAddedToday,
+  incrementWordsReviewed,
   recordCorrectAnswer,
   recordIncorrectAnswer,
+  resetSessionStats,
 } from './learning/learning';
 import {
   onActiveCorrect,
@@ -53,6 +57,10 @@ function AppContent() {
   const [currentWord, setCurrentWord] = useState(null);
   const [newWord, setNewWord] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [sessionStats, setSessionStats] = useState({
+    newWordsLearned: 0,
+    wordsReviewed: 0,
+  });
   const [homeStats, setHomeStats] = useState({
     newWords: 0,
     wordsToReview: 0,
@@ -116,6 +124,10 @@ function AppContent() {
       return;
     }
 
+    const stats = await getSessionStats(db);
+    setSessionStats(stats);
+    await resetSessionStats(db);
+
     const session = await resetSessionProgress(db);
     setProgress(session.progress);
     setScreen('sessionComplete');
@@ -138,10 +150,11 @@ function AppContent() {
     if (currentWord.source === EXERCISE_SOURCES.REVIEW) {
       if (firstAttemptCorrect) {
         await increaseInterval(db, currentWord.id);
+        await incrementWordsReviewed(db);
         session = await onReviewCorrect(db);
       } else {
         await decreaseInterval(db, currentWord.id);
-        await addToActiveWords(db, currentWord.id);
+        await addToActiveWords(db, currentWord.id, ADDED_AS.REVIEW);
         session = await onReviewIncorrect(db);
       }
     } else {
@@ -168,7 +181,7 @@ function AppContent() {
       return;
     }
     await addToLearningProgress(db, newWord.id, WORD_STATES.LEARNING);
-    await addToActiveWords(db, newWord.id);
+    await addToActiveWords(db, newWord.id, ADDED_AS.NEW);
     await incrementWordsAddedToday(db);
     const session = await onLearnWord(db);
     setProgress(session.progress);
@@ -266,8 +279,8 @@ function AppContent() {
       )}
       {screen === 'sessionComplete' && (
         <SessionCompleteScreen
-          newWords={10}
-          wordsReviewed={0}
+          newWords={sessionStats.newWordsLearned}
+          wordsReviewed={sessionStats.wordsReviewed}
           onHome={() => {
             goHome();
           }}

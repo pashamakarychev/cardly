@@ -7,7 +7,55 @@ export const SESSION_KEYS = {
   ACTIVE_POSITION: 'active_position',
   WORDS_ADDED_TODAY: 'words_added_today',
   LAST_WORDS_ADDED_DATE: 'last_words_added_date',
+  NEW_WORDS_LEARNED: 'new_words_learned',
+  WORDS_REVIEWED: 'words_reviewed',
 };
+
+/** How a word entered active_words: as a new word or as a due review. */
+export const ADDED_AS = {
+  NEW: 'NEW',
+  REVIEW: 'REVIEW',
+};
+
+async function getSessionCounter(db, key) {
+  const row = await db.getFirstAsync(
+    'SELECT value FROM session WHERE key = ?',
+    key
+  );
+  const value = Number(row?.value);
+  return Number.isFinite(value) ? value : 0;
+}
+
+async function setSessionCounter(db, key, value) {
+  await db.runAsync(
+    `
+      INSERT INTO session (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `,
+    key,
+    String(value)
+  );
+}
+
+/** Words learned / reviewed during the current session. */
+export async function getSessionStats(db) {
+  return {
+    newWordsLearned: await getSessionCounter(db, SESSION_KEYS.NEW_WORDS_LEARNED),
+    wordsReviewed: await getSessionCounter(db, SESSION_KEYS.WORDS_REVIEWED),
+  };
+}
+
+/** Resets the learned/reviewed counters after a session summary is shown. */
+export async function resetSessionStats(db) {
+  await setSessionCounter(db, SESSION_KEYS.NEW_WORDS_LEARNED, 0);
+  await setSessionCounter(db, SESSION_KEYS.WORDS_REVIEWED, 0);
+}
+
+/** Increments words_reviewed (used when a due review is answered correctly). */
+export async function incrementWordsReviewed(db) {
+  const current = await getSessionCounter(db, SESSION_KEYS.WORDS_REVIEWED);
+  await setSessionCounter(db, SESSION_KEYS.WORDS_REVIEWED, current + 1);
+}
 
 /** Fixed spaced-repetition ladder: 90s → 30m → 12h → 2d → 2w → 2m. */
 export const REVIEW_INTERVALS_MS = [
@@ -275,7 +323,8 @@ export async function advanceActivePosition(db) {
 
 /**
  * Increments correct_streak for the word. Removes it from active_words
- * once the streak reaches 3.
+ * once the streak reaches 3, incrementing the session counter that matches
+ * how the word was added (new word learned vs word reviewed).
  */
 export async function recordCorrectAnswer(db, wordId) {
   await db.runAsync(
@@ -288,12 +337,20 @@ export async function recordCorrectAnswer(db, wordId) {
   );
 
   const row = await db.getFirstAsync(
-    'SELECT correct_streak FROM active_words WHERE word_id = ?',
+    'SELECT correct_streak, added_as FROM active_words WHERE word_id = ?',
     wordId
   );
 
   if (row != null && row.correct_streak >= 3) {
     await db.runAsync('DELETE FROM active_words WHERE word_id = ?', wordId);
+
+    const counterKey =
+      row.added_as === ADDED_AS.REVIEW
+        ? SESSION_KEYS.WORDS_REVIEWED
+        : SESSION_KEYS.NEW_WORDS_LEARNED;
+    const current = await getSessionCounter(db, counterKey);
+    await setSessionCounter(db, counterKey, current + 1);
+
     return { removed: true, correctStreak: row.correct_streak };
   }
 
@@ -499,8 +556,11 @@ export async function addToLearningProgress(db, wordId, state) {
   );
 }
 
-/** Adds a word to active_words at the first free position (0..2). */
-export async function addToActiveWords(db, wordId) {
+/**
+ * Adds a word to active_words at the first free position (0..2).
+ * addedAs (ADDED_AS.NEW | ADDED_AS.REVIEW) records how the word got here.
+ */
+export async function addToActiveWords(db, wordId, addedAs) {
   const rows = await db.getAllAsync('SELECT position FROM active_words');
   const used = new Set(rows.map((row) => row.position));
 
@@ -515,11 +575,12 @@ export async function addToActiveWords(db, wordId) {
 
   await db.runAsync(
     `
-      INSERT INTO active_words (word_id, position, correct_streak)
-      VALUES (?, ?, 0)
+      INSERT INTO active_words (word_id, position, correct_streak, added_as)
+      VALUES (?, ?, 0, ?)
     `,
     wordId,
-    position
+    position,
+    addedAs
   );
 
   return position;
