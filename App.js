@@ -60,15 +60,16 @@ function AppContent() {
   });
 
   const refreshHomeStats = async () => {
-    const [newWords, dueWords, activeCountRow] = await Promise.all([
+    const [newWordsRemaining, dueWords, activeCountRow] = await Promise.all([
       getNewWordsRemainingToday(db),
       getDueLearningWords(db),
       db.getFirstAsync('SELECT COUNT(*) AS count FROM active_words'),
     ]);
+    const activeWords = activeCountRow?.count ?? 0;
     setHomeStats({
-      newWords,
+      newWords: newWordsRemaining + activeWords,
       wordsToReview: dueWords.length,
-      activeWords: activeCountRow?.count ?? 0,
+      activeWords,
     });
   };
 
