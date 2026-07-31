@@ -2,6 +2,7 @@
 // user works through them. Logic will live here so getNextStep / App stay focused
 // on what to show next, not how far along the session is.
 
+import { getLearningLanguage } from '../db/settings';
 import { getDueLearningWords, getNewWordsRemainingToday } from './learning';
 
 /** Correct first-attempt answers needed before a word leaves active_words. */
@@ -16,8 +17,14 @@ const PROGRESS_KEYS = {
  * (streak must reach ACTIVE_STREAK_TO_REMOVE).
  */
 async function countActiveWordsSteps(db) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+
   const rows = await db.getAllAsync(
-    'SELECT correct_streak FROM active_words'
+    'SELECT correct_streak FROM active_words WHERE language = ?',
+    language
   );
 
   return rows.reduce((total, row) => {
@@ -40,23 +47,35 @@ export async function countTotalSteps(db) {
 }
 
 async function getCompletedSteps(db) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+
   const row = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ?',
-    PROGRESS_KEYS.COMPLETED_STEPS
+    'SELECT value FROM session WHERE key = ? AND language = ?',
+    PROGRESS_KEYS.COMPLETED_STEPS,
+    language
   );
   const value = Number(row?.value);
   return Number.isFinite(value) ? value : 0;
 }
 
 async function setCompletedSteps(db, value) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+
   const next = Math.max(0, value);
   await db.runAsync(
     `
-      INSERT INTO session (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      INSERT INTO session (key, value, language) VALUES (?, ?, ?)
+      ON CONFLICT(key, language) DO UPDATE SET value = excluded.value
     `,
     PROGRESS_KEYS.COMPLETED_STEPS,
-    String(next)
+    String(next),
+    language
   );
   return next;
 }

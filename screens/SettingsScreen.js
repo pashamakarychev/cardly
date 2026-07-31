@@ -1,9 +1,11 @@
+import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomNavigation from '../components/BottomNavigation';
 import ChipSection from '../components/ChipSection';
+import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
 import { ChevronLeftIcon } from '../components/icons/ChevronLeftIcon';
 import {
@@ -12,6 +14,7 @@ import {
   SPEAK_LANGUAGES,
   WORDS_PER_DAY,
 } from '../constants/preferences';
+import { updateSettings } from '../db/settings';
 import { colors, typography } from '../theme';
 
 export default function SettingsScreen({
@@ -20,6 +23,7 @@ export default function SettingsScreen({
   onBack,
   onTabPress,
 }) {
+  const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
@@ -27,9 +31,40 @@ export default function SettingsScreen({
   const [wordsPerDay, setWordsPerDay] = useState(
     preferences?.wordsPerDay ?? '10'
   );
+  const [languageDialog, setLanguageDialog] = useState(null);
 
-  const update = (patch) => {
+  const updatePreferences = (patch) => {
     onPreferencesChange?.({ speaks, learning, level, wordsPerDay, ...patch });
+  };
+
+  const handleSpeaksSelect = async (value) => {
+    setSpeaks(value);
+    updatePreferences({ speaks: value });
+    await updateSettings(db, { nativeLanguage: value });
+  };
+
+  const handleLearningSelect = async (value) => {
+    if (value === learning) {
+      return;
+    }
+
+    const previousLanguage = learning;
+    setLearning(value);
+    updatePreferences({ learning: value });
+    await updateSettings(db, { learningLanguage: value });
+    setLanguageDialog({ previousLanguage, nextLanguage: value });
+  };
+
+  const handleLevelSelect = async (value) => {
+    setLevel(value);
+    updatePreferences({ level: value });
+    await updateSettings(db, { level: value });
+  };
+
+  const handleWordsPerDaySelect = async (value) => {
+    setWordsPerDay(value);
+    updatePreferences({ wordsPerDay: value });
+    await updateSettings(db, { newWordsPerDay: value });
   };
 
   return (
@@ -48,43 +83,39 @@ export default function SettingsScreen({
             label="I speak"
             options={SPEAK_LANGUAGES}
             selected={speaks}
-            onSelect={(value) => {
-              setSpeaks(value);
-              update({ speaks: value });
-            }}
+            onSelect={handleSpeaksSelect}
+            disabledOptions={learning ? [learning] : []}
           />
           <ChipSection
             label="I want to learn"
             options={LEARN_LANGUAGES}
             selected={learning}
-            onSelect={(value) => {
-              setLearning(value);
-              update({ learning: value });
-            }}
+            onSelect={handleLearningSelect}
+            disabledOptions={speaks ? [speaks] : []}
           />
           <ChipSection
             label="My level"
             options={LEVELS}
             selected={level}
-            onSelect={(value) => {
-              setLevel(value);
-              update({ level: value });
-            }}
+            onSelect={handleLevelSelect}
           />
           <ChipSection
             label="New words per day"
             options={WORDS_PER_DAY}
             selected={wordsPerDay}
-            onSelect={(value) => {
-              setWordsPerDay(value);
-              update({ wordsPerDay: value });
-            }}
+            onSelect={handleWordsPerDaySelect}
           />
         </View>
       </ScrollView>
       <View style={[styles.navContainer, { bottom: insets.bottom + 16 }]}>
         <BottomNavigation activeTab="settings" onTabPress={onTabPress} />
       </View>
+      <Dialog
+        visible={languageDialog != null}
+        title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}
+        description={`Your ${languageDialog?.previousLanguage ?? ''} progress is saved. You can switch back anytime.`}
+        onConfirm={() => setLanguageDialog(null)}
+      />
     </View>
   );
 }

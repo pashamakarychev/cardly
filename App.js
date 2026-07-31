@@ -22,6 +22,7 @@ import {
   getDueLearningWords,
   getNewWordsRemainingToday,
   getNextStep,
+  getActiveWordsCount,
   getSessionStats,
   increaseInterval,
   incrementWordsAddedToday,
@@ -68,12 +69,11 @@ function AppContent() {
   });
 
   const refreshHomeStats = async () => {
-    const [newWordsRemaining, dueWords, activeCountRow] = await Promise.all([
+    const [newWordsRemaining, dueWords, activeWords] = await Promise.all([
       getNewWordsRemainingToday(db),
       getDueLearningWords(db),
-      db.getFirstAsync('SELECT COUNT(*) AS count FROM active_words'),
+      getActiveWordsCount(db),
     ]);
-    const activeWords = activeCountRow?.count ?? 0;
     setHomeStats({
       newWords: newWordsRemaining + activeWords,
       wordsToReview: dueWords.length,

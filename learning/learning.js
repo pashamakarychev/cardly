@@ -2,6 +2,7 @@
 
 import { LANGUAGE_CODES } from '../constants/preferences';
 import { WORD_STATES } from '../db/database';
+import { getLearningLanguage } from '../db/settings';
 
 export const SESSION_KEYS = {
   ACTIVE_POSITION: 'active_position',
@@ -17,24 +18,42 @@ export const ADDED_AS = {
   REVIEW: 'REVIEW',
 };
 
-async function getSessionCounter(db, key) {
+async function getSessionValue(db, key, language) {
   const row = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ?',
-    key
+    'SELECT value FROM session WHERE key = ? AND language = ?',
+    key,
+    language
   );
-  const value = Number(row?.value);
+  return row?.value ?? null;
+}
+
+async function setSessionValue(db, key, value, language) {
+  await db.runAsync(
+    `
+      INSERT INTO session (key, value, language) VALUES (?, ?, ?)
+      ON CONFLICT(key, language) DO UPDATE SET value = excluded.value
+    `,
+    key,
+    value,
+    language
+  );
+}
+
+async function getSessionCounter(db, key) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+  const value = Number(await getSessionValue(db, key, language));
   return Number.isFinite(value) ? value : 0;
 }
 
 async function setSessionCounter(db, key, value) {
-  await db.runAsync(
-    `
-      INSERT INTO session (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `,
-    key,
-    String(value)
-  );
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return;
+  }
+  await setSessionValue(db, key, String(value), language);
 }
 
 /** Words learned / reviewed during the current session. */
@@ -68,6 +87,11 @@ export const REVIEW_INTERVALS_MS = [
 ];
 
 async function setReviewInterval(db, wordId, intervalIndex) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return null;
+  }
+
   const clamped = Math.max(
     0,
     Math.min(intervalIndex, REVIEW_INTERVALS_MS.length - 1)
@@ -78,11 +102,12 @@ async function setReviewInterval(db, wordId, intervalIndex) {
     `
       UPDATE learning_progress
       SET interval_index = ?, next_review_at = ?
-      WHERE word_id = ?
+      WHERE word_id = ? AND language = ?
     `,
     clamped,
     nextReviewAt,
-    wordId
+    wordId,
+    language
   );
 
   return { intervalIndex: clamped, nextReviewAt };
@@ -90,9 +115,15 @@ async function setReviewInterval(db, wordId, intervalIndex) {
 
 /** Moves one step up the interval ladder and schedules the next review. */
 export async function increaseInterval(db, wordId) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return null;
+  }
+
   const row = await db.getFirstAsync(
-    'SELECT interval_index FROM learning_progress WHERE word_id = ?',
-    wordId
+    'SELECT interval_index FROM learning_progress WHERE word_id = ? AND language = ?',
+    wordId,
+    language
   );
 
   if (row == null) {
@@ -105,9 +136,15 @@ export async function increaseInterval(db, wordId) {
 
 /** Moves one step down the interval ladder and schedules the next review. */
 export async function decreaseInterval(db, wordId) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return null;
+  }
+
   const row = await db.getFirstAsync(
-    'SELECT interval_index FROM learning_progress WHERE word_id = ?',
-    wordId
+    'SELECT interval_index FROM learning_progress WHERE word_id = ? AND language = ?',
+    wordId,
+    language
   );
 
   if (row == null) {
@@ -130,43 +167,48 @@ function todayDateString() {
  * Words added today. Returns 0 if last_words_added_date is not today.
  */
 export async function getWordsAddedToday(db) {
-  const dateRow = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ?',
-    SESSION_KEYS.LAST_WORDS_ADDED_DATE
-  );
-
-  if (dateRow?.value !== todayDateString()) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
     return 0;
   }
 
-  const countRow = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ?',
-    SESSION_KEYS.WORDS_ADDED_TODAY
+  const dateValue = await getSessionValue(
+    db,
+    SESSION_KEYS.LAST_WORDS_ADDED_DATE,
+    language
   );
-  const count = Number(countRow?.value);
+
+  if (dateValue !== todayDateString()) {
+    return 0;
+  }
+
+  const count = Number(
+    await getSessionValue(db, SESSION_KEYS.WORDS_ADDED_TODAY, language)
+  );
   return Number.isFinite(count) ? count : 0;
 }
 
 /** Increments words_added_today, resetting the counter when the date rolls over. */
 export async function incrementWordsAddedToday(db) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+
   const today = todayDateString();
   const current = await getWordsAddedToday(db);
 
-  await db.runAsync(
-    `
-      INSERT INTO session (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `,
+  await setSessionValue(
+    db,
     SESSION_KEYS.WORDS_ADDED_TODAY,
-    String(current + 1)
+    String(current + 1),
+    language
   );
-  await db.runAsync(
-    `
-      INSERT INTO session (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `,
+  await setSessionValue(
+    db,
     SESSION_KEYS.LAST_WORDS_ADDED_DATE,
-    today
+    today,
+    language
   );
 
   return current + 1;
@@ -219,8 +261,14 @@ export async function getNextStep(
   db,
   { nativeLanguageName, learningLanguageName, levelName }
 ) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return { type: STEP_TYPES.SESSION_COMPLETE };
+  }
+
   const { count } = await db.getFirstAsync(
-    'SELECT COUNT(*) AS count FROM active_words'
+    'SELECT COUNT(*) AS count FROM active_words WHERE language = ?',
+    language
   );
 
   if (count >= ACTIVE_WORDS_TARGET) {
@@ -254,11 +302,14 @@ export async function getNextStep(
 
 /** Returns a word from the active queue, starting at active_position. */
 export async function getNextWord(db) {
-  const row = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ?',
-    SESSION_KEYS.ACTIVE_POSITION
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return null;
+  }
+
+  const start = Number(
+    await getSessionValue(db, SESSION_KEYS.ACTIVE_POSITION, language)
   );
-  const start = Number(row?.value);
   const position = Number.isFinite(start) ? start : 0;
 
   for (let offset = 0; offset < ACTIVE_WORDS_TARGET; offset += 1) {
@@ -274,9 +325,10 @@ export async function getNextWord(db) {
           w.level
         FROM active_words aw
         JOIN words w ON w.id = aw.word_id
-        WHERE aw.position = ?
+        WHERE aw.position = ? AND aw.language = ?
       `,
-      candidate
+      candidate,
+      language
     );
 
     if (word != null) {
@@ -289,19 +341,23 @@ export async function getNextWord(db) {
 
 /** Advances active_position to the next occupied slot, wrapping within 0..2. */
 export async function advanceActivePosition(db) {
-  const row = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ?',
-    SESSION_KEYS.ACTIVE_POSITION
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+
+  const current = Number(
+    await getSessionValue(db, SESSION_KEYS.ACTIVE_POSITION, language)
   );
-  const current = Number(row?.value);
   const start = Number.isFinite(current) ? current : 0;
 
   let next = start;
   for (let offset = 1; offset <= ACTIVE_WORDS_TARGET; offset += 1) {
     const candidate = (start + offset) % ACTIVE_WORDS_TARGET;
     const occupied = await db.getFirstAsync(
-      'SELECT position FROM active_words WHERE position = ?',
-      candidate
+      'SELECT position FROM active_words WHERE position = ? AND language = ?',
+      candidate,
+      language
     );
     if (occupied != null) {
       next = candidate;
@@ -309,13 +365,11 @@ export async function advanceActivePosition(db) {
     }
   }
 
-  await db.runAsync(
-    `
-      INSERT INTO session (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `,
+  await setSessionValue(
+    db,
     SESSION_KEYS.ACTIVE_POSITION,
-    String(next)
+    String(next),
+    language
   );
 
   return next;
@@ -327,22 +381,33 @@ export async function advanceActivePosition(db) {
  * how the word was added (new word learned vs word reviewed).
  */
 export async function recordCorrectAnswer(db, wordId) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return { removed: false, correctStreak: 0 };
+  }
+
   await db.runAsync(
     `
       UPDATE active_words
       SET correct_streak = correct_streak + 1
-      WHERE word_id = ?
+      WHERE word_id = ? AND language = ?
     `,
-    wordId
+    wordId,
+    language
   );
 
   const row = await db.getFirstAsync(
-    'SELECT correct_streak, added_as FROM active_words WHERE word_id = ?',
-    wordId
+    'SELECT correct_streak, added_as FROM active_words WHERE word_id = ? AND language = ?',
+    wordId,
+    language
   );
 
   if (row != null && row.correct_streak >= 3) {
-    await db.runAsync('DELETE FROM active_words WHERE word_id = ?', wordId);
+    await db.runAsync(
+      'DELETE FROM active_words WHERE word_id = ? AND language = ?',
+      wordId,
+      language
+    );
 
     const counterKey =
       row.added_as === ADDED_AS.REVIEW
@@ -359,13 +424,19 @@ export async function recordCorrectAnswer(db, wordId) {
 
 /** Resets correct_streak after an incorrect first attempt on an active word. */
 export async function recordIncorrectAnswer(db, wordId) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return;
+  }
+
   await db.runAsync(
     `
       UPDATE active_words
       SET correct_streak = 0
-      WHERE word_id = ?
+      WHERE word_id = ? AND language = ?
     `,
-    wordId
+    wordId,
+    language
   );
 }
 
@@ -454,6 +525,11 @@ export async function loadExercise(db, nativeLanguageName) {
  * active pool. Ordered by soonest due first.
  */
 export async function getDueLearningWords(db) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return [];
+  }
+
   return db.getAllAsync(
     `
       SELECT
@@ -465,13 +541,17 @@ export async function getDueLearningWords(db) {
         lp.next_review_at
       FROM learning_progress lp
       JOIN words w ON w.id = lp.word_id
-      LEFT JOIN active_words aw ON aw.word_id = lp.word_id
-      WHERE lp.state = ?
+      LEFT JOIN active_words aw
+        ON aw.word_id = lp.word_id AND aw.language = ?
+      WHERE lp.language = ?
+        AND lp.state = ?
         AND lp.next_review_at IS NOT NULL
         AND lp.next_review_at < ?
         AND aw.word_id IS NULL
       ORDER BY lp.next_review_at ASC
     `,
+    language,
+    language,
     WORD_STATES.LEARNING,
     Date.now()
   );
@@ -508,10 +588,11 @@ export async function loadDueReview(db, nativeLanguageName) {
  * learning_progress.
  */
 export async function getRandomNewWord(db, learningLanguageName, levelName) {
-  const language = LANGUAGE_CODES[learningLanguageName];
+  const wordLanguage = LANGUAGE_CODES[learningLanguageName];
   const level = levelName?.toLowerCase();
+  const language = await getLearningLanguage(db);
 
-  if (language == null || level == null) {
+  if (wordLanguage == null || level == null || language == null) {
     return null;
   }
 
@@ -519,8 +600,10 @@ export async function getRandomNewWord(db, learningLanguageName, levelName) {
     `
       SELECT w.id, w.text, w.language, w.level
       FROM words w
-      LEFT JOIN learning_progress lp ON lp.word_id = w.id
-      LEFT JOIN active_words aw ON aw.word_id = w.id
+      LEFT JOIN learning_progress lp
+        ON lp.word_id = w.id AND lp.language = ?
+      LEFT JOIN active_words aw
+        ON aw.word_id = w.id AND aw.language = ?
       WHERE lp.word_id IS NULL
         AND aw.word_id IS NULL
         AND w.language = ?
@@ -529,11 +612,18 @@ export async function getRandomNewWord(db, learningLanguageName, levelName) {
       LIMIT 1
     `,
     language,
+    language,
+    wordLanguage,
     level
   );
 }
 
 export async function addToLearningProgress(db, wordId, state) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return;
+  }
+
   const intervalIndex = 0;
   const nextReviewAt =
     state === WORD_STATES.LEARNING
@@ -542,17 +632,19 @@ export async function addToLearningProgress(db, wordId, state) {
 
   await db.runAsync(
     `
-      INSERT INTO learning_progress (word_id, state, next_review_at, interval_index)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO learning_progress (word_id, state, next_review_at, interval_index, language)
+      VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(word_id) DO UPDATE SET
         state = excluded.state,
         next_review_at = excluded.next_review_at,
-        interval_index = excluded.interval_index
+        interval_index = excluded.interval_index,
+        language = excluded.language
     `,
     wordId,
     state,
     nextReviewAt,
-    intervalIndex
+    intervalIndex,
+    language
   );
 }
 
@@ -561,7 +653,15 @@ export async function addToLearningProgress(db, wordId, state) {
  * addedAs (ADDED_AS.NEW | ADDED_AS.REVIEW) records how the word got here.
  */
 export async function addToActiveWords(db, wordId, addedAs) {
-  const rows = await db.getAllAsync('SELECT position FROM active_words');
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return null;
+  }
+
+  const rows = await db.getAllAsync(
+    'SELECT position FROM active_words WHERE language = ?',
+    language
+  );
   const used = new Set(rows.map((row) => row.position));
 
   let position = 0;
@@ -575,15 +675,30 @@ export async function addToActiveWords(db, wordId, addedAs) {
 
   await db.runAsync(
     `
-      INSERT INTO active_words (word_id, position, correct_streak, added_as)
-      VALUES (?, ?, 0, ?)
+      INSERT INTO active_words (word_id, position, correct_streak, added_as, language)
+      VALUES (?, ?, 0, ?, ?)
     `,
     wordId,
     position,
-    addedAs
+    addedAs,
+    language
   );
 
   return position;
+}
+
+/** Count of words currently in the active pool for the learning language. */
+export async function getActiveWordsCount(db) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return 0;
+  }
+
+  const row = await db.getFirstAsync(
+    'SELECT COUNT(*) AS count FROM active_words WHERE language = ?',
+    language
+  );
+  return row?.count ?? 0;
 }
 
 function shuffle(items) {

@@ -15,6 +15,12 @@ export async function getSettings(db) {
   );
 }
 
+/** Current learning_language from settings, or null if unset. */
+export async function getLearningLanguage(db) {
+  const settings = await getSettings(db);
+  return settings?.learning_language ?? null;
+}
+
 export async function completeOnboarding(
   db,
   { nativeLanguage, learningLanguage, level, newWordsPerDay }
@@ -41,4 +47,35 @@ export async function completeOnboarding(
     level,
     newWordsPerDay
   );
+}
+
+/** Updates one or more settings fields. Only provided keys are written. */
+export async function updateSettings(
+  db,
+  { nativeLanguage, learningLanguage, level, newWordsPerDay }
+) {
+  if (nativeLanguage != null) {
+    await db.runAsync(
+      `UPDATE settings SET native_language = ? WHERE id = 1`,
+      nativeLanguage
+    );
+  }
+
+  if (learningLanguage != null) {
+    await db.runAsync(
+      `UPDATE settings SET learning_language = ? WHERE id = 1`,
+      learningLanguage
+    );
+  }
+
+  if (level != null) {
+    await db.runAsync(`UPDATE settings SET level = ? WHERE id = 1`, level);
+  }
+
+  if (newWordsPerDay != null) {
+    await db.runAsync(
+      `UPDATE settings SET new_words_per_day = ? WHERE id = 1`,
+      Number(newWordsPerDay)
+    );
+  }
 }
