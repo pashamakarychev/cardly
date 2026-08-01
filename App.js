@@ -262,7 +262,7 @@ function AppContent() {
       )}
       {screen === 'exercise' && currentWord != null && (
         <ExerciseScreen
-          key={`${currentWord.source}-${currentWord.id}-${currentWord.position ?? 'review'}`}
+          key={`${currentWord.source}-${currentWord.id}-${currentWord.position ?? 'review'}-${currentWord.correctAnswer}-${currentWord.options.join('|')}`}
           word={currentWord.text}
           options={currentWord.options}
           correctAnswer={currentWord.correctAnswer}

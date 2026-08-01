@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,6 +21,11 @@ export default function ExerciseScreen({
   const insets = useSafeAreaInsets();
   const [wrongOptions, setWrongOptions] = useState([]);
   const [resolved, setResolved] = useState(false);
+
+  useEffect(() => {
+    setWrongOptions([]);
+    setResolved(false);
+  }, [word, correctAnswer, options]);
 
   const handleAnswer = (option) => {
     if (resolved || wrongOptions.includes(option)) {
@@ -57,9 +62,9 @@ export default function ExerciseScreen({
         <CardStack word={word} nextWord={nextWord} />
       </View>
       <View style={styles.content}>
-        {options.map((option) => (
+        {options.map((option, index) => (
           <Button
-            key={option}
+            key={`${index}-${option}`}
             title={option}
             variant="secondary"
             status={statusFor(option)}
