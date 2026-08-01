@@ -22,7 +22,7 @@ import {
   getDueLearningWords,
   getNewWordsRemainingToday,
   getNextStep,
-  getActiveWordsCount,
+  getActiveWordsCounts,
   getSessionStats,
   increaseInterval,
   incrementWordsAddedToday,
@@ -69,15 +69,15 @@ function AppContent() {
   });
 
   const refreshHomeStats = async () => {
-    const [newWordsRemaining, dueWords, activeWords] = await Promise.all([
+    const [newWordsRemaining, dueWords, activeCounts] = await Promise.all([
       getNewWordsRemainingToday(db),
       getDueLearningWords(db),
-      getActiveWordsCount(db),
+      getActiveWordsCounts(db),
     ]);
     setHomeStats({
-      newWords: newWordsRemaining + activeWords,
-      wordsToReview: dueWords.length,
-      activeWords,
+      newWords: newWordsRemaining + activeCounts.new,
+      wordsToReview: dueWords.length + activeCounts.review,
+      activeWords: activeCounts.total,
     });
   };
 

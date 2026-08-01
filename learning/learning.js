@@ -687,18 +687,45 @@ export async function addToActiveWords(db, wordId, addedAs) {
   return position;
 }
 
-/** Count of words currently in the active pool for the learning language. */
-export async function getActiveWordsCount(db) {
+/** Active-pool counts for the learning language, split by added_as. */
+export async function getActiveWordsCounts(db) {
   const language = await getLearningLanguage(db);
   if (language == null) {
-    return 0;
+    return { new: 0, review: 0, total: 0 };
   }
 
-  const row = await db.getFirstAsync(
-    'SELECT COUNT(*) AS count FROM active_words WHERE language = ?',
+  const rows = await db.getAllAsync(
+    `
+      SELECT added_as, COUNT(*) AS count
+      FROM active_words
+      WHERE language = ?
+      GROUP BY added_as
+    `,
     language
   );
-  return row?.count ?? 0;
+
+  let newCount = 0;
+  let reviewCount = 0;
+  for (const row of rows) {
+    const count = row.count ?? 0;
+    if (row.added_as === ADDED_AS.REVIEW) {
+      reviewCount += count;
+    } else {
+      newCount += count;
+    }
+  }
+
+  return {
+    new: newCount,
+    review: reviewCount,
+    total: newCount + reviewCount,
+  };
+}
+
+/** Count of words currently in the active pool for the learning language. */
+export async function getActiveWordsCount(db) {
+  const { total } = await getActiveWordsCounts(db);
+  return total;
 }
 
 function shuffle(items) {
