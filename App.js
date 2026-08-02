@@ -23,6 +23,8 @@ import {
   getNewWordsRemainingToday,
   getNextStep,
   getActiveWordsCounts,
+  getLevelCompleted,
+  clearLevelCompleted,
   getSessionStats,
   increaseInterval,
   incrementWordsAddedToday,
@@ -67,6 +69,7 @@ function AppContent() {
     wordsToReview: 0,
     activeWords: 0,
   });
+  const [levelCompleted, setLevelCompleted] = useState(null);
 
   const refreshHomeStats = async () => {
     const [newWordsRemaining, dueWords, activeCounts] = await Promise.all([
@@ -81,6 +84,10 @@ function AppContent() {
     });
   };
 
+  const loadLevelCompleted = async () => {
+    setLevelCompleted(await getLevelCompleted(db));
+  };
+
   useEffect(() => {
     async function loadInitialScreen() {
       const settings = await getSettings(db);
@@ -93,6 +100,7 @@ function AppContent() {
           wordsPerDay: String(settings.new_words_per_day),
         });
         await refreshHomeStats();
+        await loadLevelCompleted();
         setScreen('home');
         return;
       }
@@ -119,6 +127,12 @@ function AppContent() {
     }
 
     if (step.type === STEP_TYPES.NEW_WORD) {
+      if (step.word.promotedLevel != null) {
+        setPreferences((current) => ({
+          ...current,
+          level: step.word.promotedLevel,
+        }));
+      }
       setNewWord(step.word);
       setScreen('newWord');
       return;
@@ -200,7 +214,13 @@ function AppContent() {
 
   const goHome = async () => {
     await refreshHomeStats();
+    await loadLevelCompleted();
     setScreen('home');
+  };
+
+  const handleLevelCompletedConfirm = async () => {
+    await clearLevelCompleted(db);
+    setLevelCompleted(null);
   };
 
   if (screen == null) {
@@ -226,6 +246,9 @@ function AppContent() {
             homeStats.wordsToReview > 0 ||
             homeStats.activeWords > 0
           }
+          currentLevel={preferences?.level}
+          levelCompleted={levelCompleted}
+          onLevelCompletedConfirm={handleLevelCompletedConfirm}
           onStart={handleStart}
           onTabPress={(tab) => {
             if (tab === 'settings') {

@@ -3,17 +3,43 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomNavigation from '../components/BottomNavigation';
 import Button from '../components/Button';
+import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
 import { colors, typography } from '../theme';
+
+function levelCompletedCopy(levelCompleted, currentLevel) {
+  if (levelCompleted == null) {
+    return null;
+  }
+
+  if (levelCompleted.changed) {
+    const from = levelCompleted.from ?? currentLevel ?? '';
+    const to = levelCompleted.to ?? '';
+    return {
+      title: `You've learned all ${from} words!`,
+      description: `You'll now start learning ${to} words. Your ${from} words will continue to appear for review.`,
+    };
+  }
+
+  const level = currentLevel ?? levelCompleted.from ?? '';
+  return {
+    title: `You've learned all ${level} words!`,
+    description: `New words will no longer be introduced. Your ${level} words will continue to appear for review.`,
+  };
+}
 
 export default function HomeScreen({
   newWords = 0,
   wordsToReview = 0,
   canStart = false,
+  currentLevel,
+  levelCompleted,
+  onLevelCompletedConfirm,
   onStart,
   onTabPress,
 }) {
   const insets = useSafeAreaInsets();
+  const dialog = levelCompletedCopy(levelCompleted, currentLevel);
 
   return (
     <View
@@ -31,6 +57,12 @@ export default function HomeScreen({
         <Button title="Start" onPress={onStart} disabled={!canStart} />
       </View>
       <BottomNavigation activeTab="home" onTabPress={onTabPress} />
+      <Dialog
+        visible={dialog != null}
+        title={dialog?.title ?? ''}
+        description={dialog?.description ?? ''}
+        onConfirm={onLevelCompletedConfirm}
+      />
     </View>
   );
 }
