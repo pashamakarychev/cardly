@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CheckIcon } from './icons/CheckIcon';
+import { XIcon } from './icons/XIcon';
 import { colors, typography } from '../theme';
 
 // status ('correct' | 'incorrect') shows answer feedback on secondary buttons
@@ -13,6 +15,8 @@ export default function Button({
 }) {
   const secondary = variant === 'secondary';
   const showFeedback = status === 'correct' || status === 'incorrect';
+  const iconColor =
+    status === 'correct' ? colors.successStrong : colors.errorStrong;
 
   return (
     <Pressable
@@ -30,15 +34,25 @@ export default function Button({
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.title,
-          secondary && styles.titleSecondary,
-          disabled && secondary && styles.titleSecondaryDisabled,
-        ]}
-      >
-        {title}
-      </Text>
+      <View style={styles.content}>
+        {showFeedback ? (
+          status === 'correct' ? (
+            <CheckIcon size={24} color={iconColor} />
+          ) : (
+            <XIcon size={24} color={iconColor} />
+          )
+        ) : null}
+        <Text
+          style={[
+            styles.title,
+            secondary && styles.titleSecondary,
+            disabled && secondary && styles.titleSecondaryDisabled,
+          ]}
+        >
+          {title}
+        </Text>
+        {showFeedback ? <View style={styles.iconSpacer} /> : null}
+      </View>
     </Pressable>
   );
 }
@@ -72,6 +86,16 @@ const styles = StyleSheet.create({
   },
   incorrect: {
     backgroundColor: colors.error,
+  },
+  content: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
+  },
+  iconSpacer: {
+    height: 24,
+    width: 24,
   },
   title: {
     ...typography.button,

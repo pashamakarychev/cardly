@@ -15,8 +15,10 @@ export const palette = {
   gray400: '#1A1A1A',
   gray500: '#0D0D0D',
 
-  green: '#C3EED0',
-  red: '#FCD3D3',
+  green100: '#C3EED0',
+  green200: '#446E51',
+  red100: '#FCD3D3',
+  red200: '#7D4343',
 };
 
 // Semantic aliases — prefer these over raw palette values in screens/components
@@ -35,6 +37,8 @@ export const colors = {
   primaryPressed: palette.azure200,
   primaryDisabled: palette.azure50,
 
-  success: palette.green,
-  error: palette.red,
+  success: palette.green100,
+  successStrong: palette.green200,
+  error: palette.red100,
+  errorStrong: palette.red200,
 };
