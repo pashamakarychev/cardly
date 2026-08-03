@@ -177,12 +177,22 @@ function AppContent() {
     await continueSession();
   };
 
-  // Called as soon as the correct answer is selected: records the result and
-  // prepares the next step in the background. Once resolved, the upcoming
-  // word is set so the card revealed by the lift already shows it. The round
-  // itself only advances in handleExerciseTransitionEnd.
+  // Prefetch the next step while card feedback/transition plays. Once resolved,
+  // upcomingWord is set so the card revealed by the lift already shows it.
+  // The round itself only advances in handleCardTransitionEnd.
+  const queueNextStep = (prepare) => {
+    const pending = prepare();
+    pendingStepRef.current = pending;
+    pending.then((step) => {
+      if (pendingStepRef.current === pending) {
+        resolvedStepRef.current = step;
+        setUpcomingWord(stepUpcomingWord(step));
+      }
+    });
+  };
+
   const handleExerciseAnswer = (firstAttemptCorrect) => {
-    const pending = (async () => {
+    queueNextStep(async () => {
       if (currentWord?.id == null) {
         return prepareNextStep();
       }
@@ -216,21 +226,13 @@ function AppContent() {
         setProgress(session.progress);
       }
       return prepareNextStep();
-    })();
-
-    pendingStepRef.current = pending;
-    pending.then((step) => {
-      if (pendingStepRef.current === pending) {
-        resolvedStepRef.current = step;
-        setUpcomingWord(stepUpcomingWord(step));
-      }
     });
   };
 
   // Runs synchronously from the card stack's animation callback, in the same
   // batch as its slot flip: the new front card keeps showing the same string
   // while the round data underneath it is replaced.
-  const handleExerciseTransitionEnd = () => {
+  const handleCardTransitionEnd = () => {
     const step = resolvedStepRef.current;
     const pending = pendingStepRef.current;
     resolvedStepRef.current = null;
@@ -245,26 +247,30 @@ function AppContent() {
     }
   };
 
-  const handleLearn = async () => {
-    if (newWord?.id == null) {
-      return;
-    }
-    await addToLearningProgress(db, newWord.id, WORD_STATES.LEARNING);
-    await addToActiveWords(db, newWord.id, ADDED_AS.NEW);
-    await incrementWordsAddedToday(db);
-    const session = await onLearnWord(db);
-    setProgress(session.progress);
-    await continueSession();
+  const handleLearn = () => {
+    queueNextStep(async () => {
+      if (newWord?.id == null) {
+        return prepareNextStep();
+      }
+      await addToLearningProgress(db, newWord.id, WORD_STATES.LEARNING);
+      await addToActiveWords(db, newWord.id, ADDED_AS.NEW);
+      await incrementWordsAddedToday(db);
+      const session = await onLearnWord(db);
+      setProgress(session.progress);
+      return prepareNextStep();
+    });
   };
 
-  const handleAlreadyKnow = async () => {
-    if (newWord?.id == null) {
-      return;
-    }
-    await addToLearningProgress(db, newWord.id, WORD_STATES.KNOWN);
-    const session = await onAlreadyKnow(db);
-    setProgress(session.progress);
-    await continueSession();
+  const handleAlreadyKnow = () => {
+    queueNextStep(async () => {
+      if (newWord?.id == null) {
+        return prepareNextStep();
+      }
+      await addToLearningProgress(db, newWord.id, WORD_STATES.KNOWN);
+      const session = await onAlreadyKnow(db);
+      setProgress(session.progress);
+      return prepareNextStep();
+    });
   };
 
   const goHome = async () => {
@@ -331,14 +337,15 @@ function AppContent() {
       )}
       {screen === 'newWord' && newWord != null && (
         <NewWordScreen
-          key={newWord.id}
           word={newWord.text}
+          nextWord={upcomingWord}
           progress={progress}
           onClose={() => {
             goHome();
           }}
           onLearn={handleLearn}
           onAlreadyKnow={handleAlreadyKnow}
+          onTransitionEnd={handleCardTransitionEnd}
         />
       )}
       {screen === 'exercise' && currentWord != null && (
@@ -352,7 +359,7 @@ function AppContent() {
             goHome();
           }}
           onAnswer={handleExerciseAnswer}
-          onTransitionEnd={handleExerciseTransitionEnd}
+          onTransitionEnd={handleCardTransitionEnd}
         />
       )}
       {screen === 'sessionComplete' && (

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,6 +9,9 @@ import ProgressBar from '../components/ProgressBar';
 import { XIcon } from '../components/icons/XIcon';
 import { colors } from '../theme';
 
+// Match ExerciseScreen: brief pause so the tap registers before the cards move.
+const TRANSITION_DELAY_MS = 300;
+
 export default function NewWordScreen({
   word = 'Hola',
   nextWord,
@@ -15,8 +19,44 @@ export default function NewWordScreen({
   onClose,
   onLearn,
   onAlreadyKnow,
+  onTransitionEnd,
 }) {
   const insets = useSafeAreaInsets();
+  const [resolved, setResolved] = useState(false);
+  const [transitionTrigger, setTransitionTrigger] = useState(0);
+  const triggerTimeoutRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (triggerTimeoutRef.current !== null) {
+        clearTimeout(triggerTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  const startTransition = (action) => {
+    if (resolved) {
+      return;
+    }
+
+    setResolved(true);
+    // Report the choice right away so the next step can be prepared while
+    // the card transition plays out.
+    action?.();
+
+    triggerTimeoutRef.current = setTimeout(() => {
+      triggerTimeoutRef.current = null;
+      setTransitionTrigger((count) => count + 1);
+    }, TRANSITION_DELAY_MS);
+  };
+
+  // Reset in the same batch as the parent advancing the round, so the new
+  // screen renders with clean action buttons.
+  const handleTransitionEnd = () => {
+    setResolved(false);
+    onTransitionEnd?.();
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 19 }]}>
@@ -25,11 +65,25 @@ export default function NewWordScreen({
         <ProgressBar progress={progress} />
       </View>
       <View style={styles.flashcardContainer}>
-        <CardStack word={word} nextWord={nextWord} />
+        <CardStack
+          word={word}
+          nextWord={nextWord}
+          transitionTrigger={transitionTrigger}
+          onTransitionEnd={handleTransitionEnd}
+        />
       </View>
       <View style={styles.content}>
-        <Button title="Learn" onPress={onLearn} />
-        <Button title="Already know" variant="secondary" onPress={onAlreadyKnow} />
+        <Button
+          title="Learn"
+          disabled={resolved}
+          onPress={() => startTransition(onLearn)}
+        />
+        <Button
+          title="Already know"
+          variant="secondary"
+          disabled={resolved}
+          onPress={() => startTransition(onAlreadyKnow)}
+        />
       </View>
     </View>
   );
