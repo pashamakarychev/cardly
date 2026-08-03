@@ -6,7 +6,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
@@ -111,15 +111,35 @@ function AppContent() {
     loadInitialScreen();
   }, [db]);
 
-  // What to show next (exercise, new word, or session complete) is decided
-  // by getNextStep in learning/learning.js; this only maps the step to a screen.
-  const continueSession = async () => {
-    const step = await getNextStep(db, {
+  // Next step prepared while the answer feedback and card transition play,
+  // so the round can advance in the same batch as the card slot swap.
+  const pendingStepRef = useRef(null);
+  const resolvedStepRef = useRef(null);
+  const [upcomingWord, setUpcomingWord] = useState(null);
+
+  const prepareNextStep = () =>
+    getNextStep(db, {
       nativeLanguageName: preferences?.speaks,
       learningLanguageName: preferences?.learning,
       levelName: preferences?.level,
     });
 
+  // The word the card revealed by the lift should display for a given step.
+  const stepUpcomingWord = (step) => {
+    if (step.type === STEP_TYPES.EXERCISE) {
+      return step.exercise.text;
+    }
+    if (step.type === STEP_TYPES.NEW_WORD) {
+      return step.word.text;
+    }
+    return null;
+  };
+
+  // What to show next (exercise, new word, or session complete) is decided
+  // by getNextStep in learning/learning.js; this only maps the step to a screen.
+  // For exercise and new-word steps the state updates run synchronously, so
+  // callers inside the same event keep everything in one render batch.
+  const showStep = async (step) => {
     if (step.type === STEP_TYPES.EXERCISE) {
       setCurrentWord(step.exercise);
       setScreen('exercise');
@@ -147,47 +167,82 @@ function AppContent() {
     setScreen('sessionComplete');
   };
 
+  const continueSession = async () => {
+    await showStep(await prepareNextStep());
+  };
+
   const handleStart = async () => {
     const session = await syncSessionProgress(db);
     setProgress(session.progress);
     await continueSession();
   };
 
-  const handleExerciseAnswer = async (firstAttemptCorrect) => {
-    if (currentWord?.id == null) {
-      await continueSession();
-      return;
-    }
-
-    let session;
-
-    if (currentWord.source === EXERCISE_SOURCES.REVIEW) {
-      if (firstAttemptCorrect) {
-        await increaseInterval(db, currentWord.id);
-        await incrementWordsReviewed(db);
-        session = await onReviewCorrect(db);
-      } else {
-        await decreaseInterval(db, currentWord.id);
-        await addToActiveWords(db, currentWord.id, ADDED_AS.REVIEW);
-        session = await onReviewIncorrect(db);
+  // Called as soon as the correct answer is selected: records the result and
+  // prepares the next step in the background. Once resolved, the upcoming
+  // word is set so the card revealed by the lift already shows it. The round
+  // itself only advances in handleExerciseTransitionEnd.
+  const handleExerciseAnswer = (firstAttemptCorrect) => {
+    const pending = (async () => {
+      if (currentWord?.id == null) {
+        return prepareNextStep();
       }
-    } else {
-      // Active-queue drills only update streak; interval stays unchanged.
-      if (firstAttemptCorrect) {
-        await recordCorrectAnswer(db, currentWord.id);
-        session = await onActiveCorrect(db);
-      } else {
-        const streakBeforeMistake = currentWord.correct_streak ?? 0;
-        await recordIncorrectAnswer(db, currentWord.id);
-        session = await onActiveIncorrect(db, streakBeforeMistake);
-      }
-      await advanceActivePosition(db);
-    }
 
-    if (session != null) {
-      setProgress(session.progress);
+      let session;
+
+      if (currentWord.source === EXERCISE_SOURCES.REVIEW) {
+        if (firstAttemptCorrect) {
+          await increaseInterval(db, currentWord.id);
+          await incrementWordsReviewed(db);
+          session = await onReviewCorrect(db);
+        } else {
+          await decreaseInterval(db, currentWord.id);
+          await addToActiveWords(db, currentWord.id, ADDED_AS.REVIEW);
+          session = await onReviewIncorrect(db);
+        }
+      } else {
+        // Active-queue drills only update streak; interval stays unchanged.
+        if (firstAttemptCorrect) {
+          await recordCorrectAnswer(db, currentWord.id);
+          session = await onActiveCorrect(db);
+        } else {
+          const streakBeforeMistake = currentWord.correct_streak ?? 0;
+          await recordIncorrectAnswer(db, currentWord.id);
+          session = await onActiveIncorrect(db, streakBeforeMistake);
+        }
+        await advanceActivePosition(db);
+      }
+
+      if (session != null) {
+        setProgress(session.progress);
+      }
+      return prepareNextStep();
+    })();
+
+    pendingStepRef.current = pending;
+    pending.then((step) => {
+      if (pendingStepRef.current === pending) {
+        resolvedStepRef.current = step;
+        setUpcomingWord(stepUpcomingWord(step));
+      }
+    });
+  };
+
+  // Runs synchronously from the card stack's animation callback, in the same
+  // batch as its slot flip: the new front card keeps showing the same string
+  // while the round data underneath it is replaced.
+  const handleExerciseTransitionEnd = () => {
+    const step = resolvedStepRef.current;
+    const pending = pendingStepRef.current;
+    resolvedStepRef.current = null;
+    pendingStepRef.current = null;
+    setUpcomingWord(null);
+
+    if (step != null) {
+      showStep(step);
+    } else if (pending != null) {
+      // The database was slower than the animation; apply once ready.
+      pending.then((lateStep) => showStep(lateStep));
     }
-    await continueSession();
   };
 
   const handleLearn = async () => {
@@ -213,6 +268,9 @@ function AppContent() {
   };
 
   const goHome = async () => {
+    pendingStepRef.current = null;
+    resolvedStepRef.current = null;
+    setUpcomingWord(null);
     await refreshHomeStats();
     await loadLevelCompleted();
     setScreen('home');
@@ -285,19 +343,16 @@ function AppContent() {
       )}
       {screen === 'exercise' && currentWord != null && (
         <ExerciseScreen
-          key={`${currentWord.source}-${currentWord.id}-${currentWord.position ?? 'review'}-${currentWord.correctAnswer}-${currentWord.options.join('|')}`}
           word={currentWord.text}
+          nextWord={upcomingWord}
           options={currentWord.options}
           correctAnswer={currentWord.correctAnswer}
           progress={progress}
           onClose={() => {
             goHome();
           }}
-          onAnswer={(firstAttemptCorrect) => {
-            setTimeout(() => {
-              handleExerciseAnswer(firstAttemptCorrect);
-            }, 800);
-          }}
+          onAnswer={handleExerciseAnswer}
+          onTransitionEnd={handleExerciseTransitionEnd}
         />
       )}
       {screen === 'sessionComplete' && (
