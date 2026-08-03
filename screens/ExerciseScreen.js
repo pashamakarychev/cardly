@@ -47,9 +47,8 @@ export default function ExerciseScreen({
       return;
     }
 
+    // Button state updates immediately; the card transition starts after a short pause.
     setResolved(true);
-    // Report the answer right away so the next step can be prepared while
-    // the feedback pause and card transition play out.
     onAnswer?.(wrongOptions.length === 0);
 
     triggerTimeoutRef.current = setTimeout(() => {

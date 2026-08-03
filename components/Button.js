@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CheckIcon } from './icons/CheckIcon';
 import { XIcon } from './icons/XIcon';
+import { useDelayedPressed } from './useDelayedPressed';
 import { colors, typography } from '../theme';
 
 // status ('correct' | 'incorrect') shows answer feedback on secondary buttons
@@ -17,17 +18,22 @@ export default function Button({
   const showFeedback = status === 'correct' || status === 'incorrect';
   const iconColor =
     status === 'correct' ? colors.successStrong : colors.errorStrong;
+  const { showPressed, onPressIn, onPressOut } = useDelayedPressed({
+    disabled: disabled || showFeedback,
+  });
 
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[
         styles.button,
         secondary && styles.buttonSecondary,
         disabled && (secondary ? styles.secondaryDisabled : styles.primaryDisabled),
         !disabled &&
-          pressed &&
+          showPressed &&
           (secondary ? styles.secondaryPressed : styles.primaryPressed),
         showFeedback && status === 'correct' && styles.correct,
         showFeedback && status === 'incorrect' && styles.incorrect,

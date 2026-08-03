@@ -1,10 +1,16 @@
 import { Pressable, StyleSheet } from 'react-native';
 
+import { useDelayedPressed } from './useDelayedPressed';
+
 export default function IconButton({ icon, onPress }) {
+  const { showPressed, onPressIn, onPressOut } = useDelayedPressed();
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[styles.button, showPressed && styles.pressed]}
     >
       {icon}
     </Pressable>
