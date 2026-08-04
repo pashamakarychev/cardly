@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
 
@@ -21,8 +21,22 @@ const CENTER_DY = BACK.top + BACK.h / 2 - (FRONT.top + FRONT.h / 2); // -22.4
 const LIFT_DURATION = 200;
 const SWAP_DURATION = 280;
 
+// Screen horizontal padding on exercise / new-word screens (16 each side).
+const SCREEN_PADDING_X = 32;
+
+// Survives remounts (e.g. new-word → exercise) so the first paint already has
+// a width and the cards are never missing for a frame.
+let lastStackWidth = 0;
+
+function initialStackWidth() {
+  if (lastStackWidth > 0) {
+    return lastStackWidth;
+  }
+  return Math.max(Dimensions.get('window').width - SCREEN_PADDING_X, 1);
+}
+
 export default function CardStack({ word, nextWord, transitionTrigger = 0, onTransitionEnd }) {
-  const [stackWidth, setStackWidth] = useState(0);
+  const [stackWidth, setStackWidth] = useState(initialStackWidth);
   // Slot whose card is logically the front card (controls word assignment)
   const [frontSlot, setFrontSlot] = useState(0);
   // Slot rendered on top (flips as soon as the lift exposes the next card)
@@ -140,14 +154,14 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
   return (
     <View
       style={styles.stack}
-      onLayout={(event) => setStackWidth(event.nativeEvent.layout.width)}
+      onLayout={(event) => {
+        const width = event.nativeEvent.layout.width;
+        lastStackWidth = width;
+        setStackWidth(width);
+      }}
     >
-      {stackWidth > 0 && (
-        <>
-          {renderCard(0)}
-          {renderCard(1)}
-        </>
-      )}
+      {renderCard(0)}
+      {renderCard(1)}
     </View>
   );
 }
