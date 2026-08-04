@@ -8,6 +8,7 @@ import IconButton from '../components/IconButton';
 import ProgressBar from '../components/ProgressBar';
 import { XIcon } from '../components/icons/XIcon';
 import { colors } from '../theme';
+import { capitalizeWord } from '../utils/text';
 
 // Pause after the correct answer so the green state registers before the cards move
 const TRANSITION_DELAY_MS = 300;
@@ -101,7 +102,7 @@ export default function ExerciseScreen({
         {options.map((option, index) => (
           <Button
             key={`${index}-${option}`}
-            title={option}
+            title={capitalizeWord(option)}
             variant="secondary"
             status={statusFor(option)}
             onPress={() => handleAnswer(option)}
