@@ -73,15 +73,10 @@ export default function NewWordScreen({
         />
       </View>
       <View style={styles.content}>
-        <Button
-          title="Learn"
-          disabled={resolved}
-          onPress={() => startTransition(onLearn)}
-        />
+        <Button title="Learn" onPress={() => startTransition(onLearn)} />
         <Button
           title="Already know"
           variant="secondary"
-          disabled={resolved}
           onPress={() => startTransition(onAlreadyKnow)}
         />
       </View>

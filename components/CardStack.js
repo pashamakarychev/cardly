@@ -18,8 +18,8 @@ const BACK_SCALE = BACK.w / FRONT.w; // 0.9
 const CENTER_DX = BACK.left + BACK.w / 2 - FRONT.w / 2; // -1.5
 const CENTER_DY = BACK.top + BACK.h / 2 - (FRONT.top + FRONT.h / 2); // -22.4
 
-const LIFT_DURATION = 260;
-const SWAP_DURATION = 380;
+const LIFT_DURATION = 200;
+const SWAP_DURATION = 280;
 
 export default function CardStack({ word, nextWord, transitionTrigger = 0, onTransitionEnd }) {
   const [stackWidth, setStackWidth] = useState(0);
