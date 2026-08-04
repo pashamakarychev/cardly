@@ -47,14 +47,22 @@ export default function ExerciseScreen({
       return;
     }
 
-    // Button state updates immediately; the card transition starts after a short pause.
+    // Button state updates immediately; the card transition starts after a short
+    // pause — unless this was the last card, in which case we skip the animation.
     setResolved(true);
-    onAnswer?.(wrongOptions.length === 0);
+    const firstAttemptCorrect = wrongOptions.length === 0;
 
-    triggerTimeoutRef.current = setTimeout(() => {
-      triggerTimeoutRef.current = null;
-      setTransitionTrigger((count) => count + 1);
-    }, TRANSITION_DELAY_MS);
+    (async () => {
+      const shouldAnimate = await onAnswer?.(firstAttemptCorrect);
+      triggerTimeoutRef.current = setTimeout(() => {
+        triggerTimeoutRef.current = null;
+        if (shouldAnimate === false) {
+          handleTransitionEnd();
+          return;
+        }
+        setTransitionTrigger((count) => count + 1);
+      }, TRANSITION_DELAY_MS);
+    })();
   };
 
   // Reset in the same batch as the parent advancing the round, so the new

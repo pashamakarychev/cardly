@@ -42,13 +42,18 @@ export default function NewWordScreen({
 
     setResolved(true);
     // Report the choice right away so the next step can be prepared while
-    // the card transition plays out.
-    action?.();
-
-    triggerTimeoutRef.current = setTimeout(() => {
-      triggerTimeoutRef.current = null;
-      setTransitionTrigger((count) => count + 1);
-    }, TRANSITION_DELAY_MS);
+    // the feedback pause (and optional card transition) play out.
+    (async () => {
+      const shouldAnimate = await action?.();
+      triggerTimeoutRef.current = setTimeout(() => {
+        triggerTimeoutRef.current = null;
+        if (shouldAnimate === false) {
+          handleTransitionEnd();
+          return;
+        }
+        setTransitionTrigger((count) => count + 1);
+      }, TRANSITION_DELAY_MS);
+    })();
   };
 
   // Reset in the same batch as the parent advancing the round, so the new

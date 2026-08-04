@@ -180,21 +180,34 @@ function AppContent() {
   // Prefetch the next step while card feedback/transition plays. Once resolved,
   // upcomingWord is set so the card revealed by the lift already shows it.
   // The round itself only advances in handleCardTransitionEnd.
+  // Returns whether the card stack should animate (false for the last card).
   const queueNextStep = (prepare) => {
     const pending = prepare();
     pendingStepRef.current = pending;
-    pending.then((step) => {
+    return pending.then(({ step, shouldAnimate }) => {
       if (pendingStepRef.current === pending) {
         resolvedStepRef.current = step;
         setUpcomingWord(stepUpcomingWord(step));
       }
+      return shouldAnimate;
     });
   };
 
-  const handleExerciseAnswer = (firstAttemptCorrect) => {
+  // Last card when remaining work is 0 after this action.
+  // syncSessionProgress: totalSteps = remaining, completedSteps = done;
+  // session size is completedSteps + totalSteps.
+  const shouldAnimateAfterSession = (session) => {
+    if (session == null) {
+      return true;
+    }
+    const { completedSteps, totalSteps } = session;
+    return completedSteps + totalSteps > 0 && totalSteps > 0;
+  };
+
+  const handleExerciseAnswer = (firstAttemptCorrect) =>
     queueNextStep(async () => {
       if (currentWord?.id == null) {
-        return prepareNextStep();
+        return { step: await prepareNextStep(), shouldAnimate: true };
       }
 
       let session;
@@ -225,9 +238,11 @@ function AppContent() {
       if (session != null) {
         setProgress(session.progress);
       }
-      return prepareNextStep();
+      return {
+        step: await prepareNextStep(),
+        shouldAnimate: shouldAnimateAfterSession(session),
+      };
     });
-  };
 
   // Runs synchronously from the card stack's animation callback, in the same
   // batch as its slot flip: the new front card keeps showing the same string
@@ -243,35 +258,39 @@ function AppContent() {
       showStep(step);
     } else if (pending != null) {
       // The database was slower than the animation; apply once ready.
-      pending.then((lateStep) => showStep(lateStep));
+      pending.then((result) => showStep(result.step));
     }
   };
 
-  const handleLearn = () => {
+  const handleLearn = () =>
     queueNextStep(async () => {
       if (newWord?.id == null) {
-        return prepareNextStep();
+        return { step: await prepareNextStep(), shouldAnimate: true };
       }
       await addToLearningProgress(db, newWord.id, WORD_STATES.LEARNING);
       await addToActiveWords(db, newWord.id, ADDED_AS.NEW);
       await incrementWordsAddedToday(db);
       const session = await onLearnWord(db);
       setProgress(session.progress);
-      return prepareNextStep();
+      return {
+        step: await prepareNextStep(),
+        shouldAnimate: shouldAnimateAfterSession(session),
+      };
     });
-  };
 
-  const handleAlreadyKnow = () => {
+  const handleAlreadyKnow = () =>
     queueNextStep(async () => {
       if (newWord?.id == null) {
-        return prepareNextStep();
+        return { step: await prepareNextStep(), shouldAnimate: true };
       }
       await addToLearningProgress(db, newWord.id, WORD_STATES.KNOWN);
       const session = await onAlreadyKnow(db);
       setProgress(session.progress);
-      return prepareNextStep();
+      return {
+        step: await prepareNextStep(),
+        shouldAnimate: shouldAnimateAfterSession(session),
+      };
     });
-  };
 
   const goHome = async () => {
     pendingStepRef.current = null;
