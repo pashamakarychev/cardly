@@ -54,6 +54,9 @@ export default function Button({
             secondary && styles.titleSecondary,
             disabled && secondary && styles.titleSecondaryDisabled,
           ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
         >
           {title}
         </Text>
@@ -98,6 +101,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
     justifyContent: 'center',
+    maxWidth: '100%',
+    paddingHorizontal: 16,
   },
   iconSpacer: {
     height: 24,
@@ -106,6 +111,8 @@ const styles = StyleSheet.create({
   title: {
     ...typography.button,
     color: colors.textInverse,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   titleSecondary: {
     color: colors.textPrimary,

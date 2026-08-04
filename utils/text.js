@@ -1,3 +1,7 @@
+// Temporary: set to a string to force cards and answer buttons to show this
+// word; null to use real data.
+export const TEST_CARD_WORD = null;
+
 /** Uppercases the first character for display; leaves the rest unchanged. */
 export function capitalizeWord(text) {
   if (text == null || text === '') {

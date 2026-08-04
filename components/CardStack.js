@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
-import { capitalizeWord } from '../utils/text';
+import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
 // Geometry in Figma design space (370 x 220)
 const DESIGN_W = 370;
@@ -147,8 +147,15 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
           },
         ]}
       >
-        <Text style={styles.word}>
-          {capitalizeWord(slot === frontSlot ? word : nextWord)}
+        <Text
+          style={styles.word}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {capitalizeWord(
+            TEST_CARD_WORD ?? (slot === frontSlot ? word : nextWord),
+          )}
         </Text>
       </Animated.View>
     );
@@ -188,5 +195,7 @@ const styles = StyleSheet.create({
   word: {
     ...typography.cardWord,
     color: colors.textInverse,
+    textAlign: 'center',
+    width: '100%',
   },
 });
