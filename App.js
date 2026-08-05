@@ -332,10 +332,9 @@ function AppContent() {
     setUpcomingWord(null);
   };
 
-  const goHome = async () => {
-    clearPendingSession();
-    await refreshHomeStats();
-    await loadLevelCompleted();
+  // Navigate immediately; handleNavigationStateChange clears pending session
+  // state and refreshes the stats once Home becomes the active route.
+  const goHome = () => {
     if (navigationRef.isReady()) {
       navigationRef.navigate('Home');
     }
@@ -424,12 +423,10 @@ function AppContent() {
           <Stack.Screen name="Onboarding">
             {() => (
               <OnboardingScreen
-                onContinue={async (prefs) => {
+                onContinue={(prefs) => {
                   setPreferences(prefs);
-                  await refreshHomeStats();
-                  await loadLevelCompleted();
-                  setActiveTab('home');
                   // Home becomes the new root; back must not return here.
+                  // Arriving at Home triggers the stats refresh.
                   navigationRef.reset({ index: 0, routes: [{ name: 'Home' }] });
                 }}
               />
