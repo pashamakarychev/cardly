@@ -10,10 +10,19 @@ import { XIcon } from '../components/icons/XIcon';
 import { colors } from '../theme';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
-// Pause after the correct answer so the green state registers before the cards move
+// Pause after a tap so the button feedback registers before the cards move
 const TRANSITION_DELAY_MS = 300;
 
-export default function ExerciseScreen({
+export const SESSION_MODES = {
+  EXERCISE: 'exercise',
+  NEW_WORD: 'newWord',
+};
+
+// One screen for both session rounds: an exercise (word + answer options)
+// and a new word (Learn / Already know). The card stack persists across
+// rounds so the swap animation carries from one round to the next.
+export default function SessionScreen({
+  mode = SESSION_MODES.EXERCISE,
   word = 'Hola',
   nextWord,
   options = ['Hello', 'Book', 'City', 'Food'],
@@ -21,6 +30,8 @@ export default function ExerciseScreen({
   progress = 0.3,
   onClose,
   onAnswer,
+  onLearn,
+  onAlreadyKnow,
   onTransitionEnd,
 }) {
   const insets = useSafeAreaInsets();
@@ -38,23 +49,23 @@ export default function ExerciseScreen({
     [],
   );
 
-  const handleAnswer = (option) => {
-    if (resolved || wrongOptions.includes(option)) {
-      return;
-    }
+  // Reset in the same batch as the parent advancing the round, so the next
+  // round renders with clean buttons.
+  const handleTransitionEnd = () => {
+    setWrongOptions([]);
+    setResolved(false);
+    onTransitionEnd?.();
+  };
 
-    if (option !== correctAnswer) {
-      setWrongOptions((current) => [...current, option]);
-      return;
-    }
-
-    // Button state updates immediately; the card transition starts after a short
-    // pause — unless this was the last card, in which case we skip the animation.
+  // Button state updates immediately; the action is reported right away so
+  // the next step can be prepared while the feedback pause (and optional
+  // card transition) play out. When the action resolves to false (last card),
+  // the animation is skipped.
+  const resolveRound = (action) => {
     setResolved(true);
-    const firstAttemptCorrect = wrongOptions.length === 0;
 
     (async () => {
-      const shouldAnimate = await onAnswer?.(firstAttemptCorrect);
+      const shouldAnimate = await action?.();
       triggerTimeoutRef.current = setTimeout(() => {
         triggerTimeoutRef.current = null;
         if (shouldAnimate === false) {
@@ -66,12 +77,25 @@ export default function ExerciseScreen({
     })();
   };
 
-  // Reset in the same batch as the parent advancing the round, so the new
-  // exercise renders with clean answer buttons.
-  const handleTransitionEnd = () => {
-    setWrongOptions([]);
-    setResolved(false);
-    onTransitionEnd?.();
+  const handleAnswer = (option) => {
+    if (resolved || wrongOptions.includes(option)) {
+      return;
+    }
+
+    if (option !== correctAnswer) {
+      setWrongOptions((current) => [...current, option]);
+      return;
+    }
+
+    const firstAttemptCorrect = wrongOptions.length === 0;
+    resolveRound(() => onAnswer?.(firstAttemptCorrect));
+  };
+
+  const handleChoice = (action) => {
+    if (resolved) {
+      return;
+    }
+    resolveRound(action);
   };
 
   const statusFor = (option) => {
@@ -99,15 +123,26 @@ export default function ExerciseScreen({
         />
       </View>
       <View style={styles.content}>
-        {options.map((option, index) => (
-          <Button
-            key={`${index}-${option}`}
-            title={capitalizeWord(TEST_CARD_WORD ?? option)}
-            variant="secondary"
-            status={statusFor(option)}
-            onPress={() => handleAnswer(option)}
-          />
-        ))}
+        {mode === SESSION_MODES.EXERCISE ? (
+          options.map((option, index) => (
+            <Button
+              key={`${index}-${option}`}
+              title={capitalizeWord(TEST_CARD_WORD ?? option)}
+              variant="secondary"
+              status={statusFor(option)}
+              onPress={() => handleAnswer(option)}
+            />
+          ))
+        ) : (
+          <>
+            <Button title="Learn" onPress={() => handleChoice(onLearn)} />
+            <Button
+              title="Already know"
+              variant="secondary"
+              onPress={() => handleChoice(onAlreadyKnow)}
+            />
+          </>
+        )}
       </View>
     </View>
   );

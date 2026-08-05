@@ -43,11 +43,10 @@ import {
   resetSessionProgress,
   syncSessionProgress,
 } from './learning/sessionProgress';
-import ExerciseScreen from './screens/ExerciseScreen';
 import HomeScreen from './screens/HomeScreen';
-import NewWordScreen from './screens/NewWordScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
+import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
 // Screen state must live inside SQLiteProvider's children. The provider is
@@ -354,30 +353,21 @@ function AppContent() {
           }}
         />
       )}
-      {screen === 'newWord' && newWord != null && (
-        <NewWordScreen
-          word={newWord.text}
+      {((screen === 'newWord' && newWord != null) ||
+        (screen === 'exercise' && currentWord != null)) && (
+        <SessionScreen
+          mode={screen === 'newWord' ? SESSION_MODES.NEW_WORD : SESSION_MODES.EXERCISE}
+          word={screen === 'newWord' ? newWord.text : currentWord.text}
           nextWord={upcomingWord}
-          progress={progress}
-          onClose={() => {
-            goHome();
-          }}
-          onLearn={handleLearn}
-          onAlreadyKnow={handleAlreadyKnow}
-          onTransitionEnd={handleCardTransitionEnd}
-        />
-      )}
-      {screen === 'exercise' && currentWord != null && (
-        <ExerciseScreen
-          word={currentWord.text}
-          nextWord={upcomingWord}
-          options={currentWord.options}
-          correctAnswer={currentWord.correctAnswer}
+          options={screen === 'exercise' ? currentWord.options : undefined}
+          correctAnswer={screen === 'exercise' ? currentWord.correctAnswer : undefined}
           progress={progress}
           onClose={() => {
             goHome();
           }}
           onAnswer={handleExerciseAnswer}
+          onLearn={handleLearn}
+          onAlreadyKnow={handleAlreadyKnow}
           onTransitionEnd={handleCardTransitionEnd}
         />
       )}
