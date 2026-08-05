@@ -7,6 +7,7 @@ import BottomGradient from '../components/BottomGradient';
 import ChipSection from '../components/ChipSection';
 import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
+import TopGradient from '../components/TopGradient';
 import { ChevronLeftIcon } from '../components/icons/ChevronLeftIcon';
 import {
   LEARN_LANGUAGES,
@@ -20,6 +21,8 @@ import { colors, typography } from '../theme';
 // Bottom nav geometry (matches BottomNavigation + App nav overlay).
 const NAV_BOTTOM_PADDING = 16;
 const NAV_HEIGHT = 64;
+// Matches Figma content top inset under the Top Gradient.
+const CONTENT_TOP_PADDING = 19;
 
 export default function SettingsScreen({
   preferences,
@@ -28,6 +31,7 @@ export default function SettingsScreen({
 }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const topInset = insets.top + CONTENT_TOP_PADDING;
   const navBottom = insets.bottom + NAV_BOTTOM_PADDING;
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
@@ -72,11 +76,11 @@ export default function SettingsScreen({
   };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 19 }]}>
+    <View style={styles.screen}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 96 },
+          { paddingTop: topInset, paddingBottom: insets.bottom + 96 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -111,6 +115,7 @@ export default function SettingsScreen({
           />
         </View>
       </ScrollView>
+      <TopGradient height={topInset} />
       <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
       <Dialog
         visible={languageDialog != null}

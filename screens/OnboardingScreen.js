@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import ChipSection from '../components/ChipSection';
+import TopGradient from '../components/TopGradient';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { completeOnboarding } from '../db/settings';
 import { colors, typography } from '../theme';
@@ -13,6 +14,8 @@ import { colors, typography } from '../theme';
 // Continue button geometry (matches Button + footer placement).
 const CONTINUE_BOTTOM = 50;
 const CONTINUE_HEIGHT = 60;
+// Matches Figma content top inset under the Top Gradient.
+const CONTENT_TOP_PADDING = 19;
 
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
@@ -62,11 +65,13 @@ export default function OnboardingScreen({ onContinue }) {
     }
   };
 
+  const topInset = insets.top + CONTENT_TOP_PADDING;
+
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 19 }]}>
+    <View style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topInset }]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Let's get started</Text>
@@ -99,6 +104,7 @@ export default function OnboardingScreen({ onContinue }) {
           />
         </View>
       </ScrollView>
+      <TopGradient height={topInset} />
       <BottomGradient bottom={CONTINUE_BOTTOM} height={CONTINUE_HEIGHT} />
       <View style={styles.footer}>
         <Button
