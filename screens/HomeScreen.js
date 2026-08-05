@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import BottomNavigation from '../components/BottomNavigation';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
@@ -36,7 +35,6 @@ export default function HomeScreen({
   levelCompleted,
   onLevelCompletedConfirm,
   onStart,
-  onTabPress,
 }) {
   const insets = useSafeAreaInsets();
   const dialog = levelCompletedCopy(levelCompleted, currentLevel);
@@ -45,7 +43,7 @@ export default function HomeScreen({
     <View
       style={[
         styles.screen,
-        { paddingTop: insets.top + 19, paddingBottom: insets.bottom + 16 },
+        { paddingTop: insets.top + 19, paddingBottom: insets.bottom + 80 },
       ]}
     >
       <View style={styles.content}>
@@ -56,7 +54,6 @@ export default function HomeScreen({
         </View>
         <Button title="Start" onPress={onStart} disabled={!canStart} />
       </View>
-      <BottomNavigation activeTab="home" onTabPress={onTabPress} />
       <Dialog
         visible={dialog != null}
         title={dialog?.title ?? ''}

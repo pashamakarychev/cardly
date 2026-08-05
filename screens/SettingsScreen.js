@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import BottomNavigation from '../components/BottomNavigation';
 import ChipSection from '../components/ChipSection';
 import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
@@ -21,7 +20,6 @@ export default function SettingsScreen({
   preferences,
   onPreferencesChange,
   onBack,
-  onTabPress,
 }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
@@ -107,9 +105,6 @@ export default function SettingsScreen({
           />
         </View>
       </ScrollView>
-      <View style={[styles.navContainer, { bottom: insets.bottom + 16 }]}>
-        <BottomNavigation activeTab="settings" onTabPress={onTabPress} />
-      </View>
       <Dialog
         visible={languageDialog != null}
         title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}
@@ -135,9 +130,5 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 24,
-  },
-  navContainer: {
-    alignSelf: 'center',
-    position: 'absolute',
   },
 });

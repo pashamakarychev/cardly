@@ -13,8 +13,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BottomNavigation from './components/BottomNavigation';
 import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
 import { getSettings } from './db/settings';
 import {
@@ -66,7 +68,9 @@ const navigationRef = createNavigationContainerRef();
 // would not trigger a re-render.
 function AppContent() {
   const db = useSQLiteContext();
+  const insets = useSafeAreaInsets();
   const [initialRoute, setInitialRoute] = useState(null);
+  const [activeTab, setActiveTab] = useState(null);
   const [sessionMode, setSessionMode] = useState(SESSION_MODES.EXERCISE);
   const [preferences, setPreferences] = useState(null);
   const [currentWord, setCurrentWord] = useState(null);
@@ -113,6 +117,7 @@ function AppContent() {
         });
         await refreshHomeStats();
         await loadLevelCompleted();
+        setActiveTab('home');
         setInitialRoute('Home');
         return;
       }
@@ -337,12 +342,38 @@ function AppContent() {
   };
 
   // Covers arriving at Home without goHome (hardware back / swipe gesture):
-  // drop any pending session step and refresh the stats.
+  // drop any pending session step and refresh the stats. Also keeps the
+  // fixed bottom nav in sync with the active route.
+  const syncActiveTab = (routeName) => {
+    if (routeName === 'Home') {
+      setActiveTab('home');
+    } else if (routeName === 'Settings') {
+      setActiveTab('settings');
+    } else {
+      setActiveTab(null);
+    }
+  };
+
   const handleNavigationStateChange = () => {
-    if (navigationRef.getCurrentRoute()?.name === 'Home') {
+    const routeName = navigationRef.getCurrentRoute()?.name;
+    syncActiveTab(routeName);
+    if (routeName === 'Home') {
       clearPendingSession();
       refreshHomeStats();
       loadLevelCompleted();
+    }
+  };
+
+  const handleTabPress = (tab) => {
+    if (!navigationRef.isReady()) {
+      return;
+    }
+    if (tab === 'home') {
+      goHome();
+      return;
+    }
+    if (tab === 'settings') {
+      navigationRef.navigate('Settings');
     }
   };
 
@@ -397,6 +428,7 @@ function AppContent() {
                   setPreferences(prefs);
                   await refreshHomeStats();
                   await loadLevelCompleted();
+                  setActiveTab('home');
                   // Home becomes the new root; back must not return here.
                   navigationRef.reset({ index: 0, routes: [{ name: 'Home' }] });
                 }}
@@ -404,7 +436,7 @@ function AppContent() {
             )}
           </Stack.Screen>
           <Stack.Screen name="Home">
-            {({ navigation }) => (
+            {() => (
               <HomeScreen
                 newWords={homeStats.newWords}
                 wordsToReview={homeStats.wordsToReview}
@@ -417,11 +449,6 @@ function AppContent() {
                 levelCompleted={levelCompleted}
                 onLevelCompletedConfirm={handleLevelCompletedConfirm}
                 onStart={handleStart}
-                onTabPress={(tab) => {
-                  if (tab === 'settings') {
-                    navigation.navigate('Settings');
-                  }
-                }}
               />
             )}
           </Stack.Screen>
@@ -432,11 +459,6 @@ function AppContent() {
                 onPreferencesChange={setPreferences}
                 onBack={() => {
                   goHome();
-                }}
-                onTabPress={(tab) => {
-                  if (tab === 'home') {
-                    goHome();
-                  }
                 }}
               />
             )}
@@ -455,6 +477,13 @@ function AppContent() {
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
+      {activeTab != null && (
+        <View pointerEvents="box-none" style={styles.navOverlay}>
+          <View style={[styles.navContainer, { bottom: insets.bottom + 16 }]}>
+            <BottomNavigation activeTab={activeTab} onTabPress={handleTabPress} />
+          </View>
+        </View>
+      )}
       <StatusBar style="dark" />
     </>
   );
@@ -483,3 +512,13 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  navOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  navContainer: {
+    alignSelf: 'center',
+    position: 'absolute',
+  },
+});
