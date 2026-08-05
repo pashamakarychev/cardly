@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BottomGradient from '../components/BottomGradient';
 import ChipSection from '../components/ChipSection';
 import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
@@ -16,6 +17,10 @@ import {
 import { updateSettings } from '../db/settings';
 import { colors, typography } from '../theme';
 
+// Bottom nav geometry (matches BottomNavigation + App nav overlay).
+const NAV_BOTTOM_PADDING = 16;
+const NAV_HEIGHT = 64;
+
 export default function SettingsScreen({
   preferences,
   onPreferencesChange,
@@ -23,6 +28,7 @@ export default function SettingsScreen({
 }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const navBottom = insets.bottom + NAV_BOTTOM_PADDING;
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
   const [level, setLevel] = useState(preferences?.level ?? 'Beginner');
@@ -105,6 +111,7 @@ export default function SettingsScreen({
           />
         </View>
       </ScrollView>
+      <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
       <Dialog
         visible={languageDialog != null}
         title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}

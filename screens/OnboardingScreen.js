@@ -3,11 +3,16 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import ChipSection from '../components/ChipSection';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { completeOnboarding } from '../db/settings';
 import { colors, typography } from '../theme';
+
+// Continue button geometry (matches Button + footer placement).
+const CONTINUE_BOTTOM = 50;
+const CONTINUE_HEIGHT = 60;
 
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
@@ -94,7 +99,8 @@ export default function OnboardingScreen({ onContinue }) {
           />
         </View>
       </ScrollView>
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+      <BottomGradient bottom={CONTINUE_BOTTOM} height={CONTINUE_HEIGHT} />
+      <View style={styles.footer}>
         <Button
           title="Continue"
           disabled={!isComplete || saving}
@@ -115,8 +121,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: 24,
+    // Clears the absolutely positioned Continue button (60px) + 50px bottom inset.
+    paddingBottom: 134,
     paddingHorizontal: 16,
-    paddingBottom: 24,
   },
   title: {
     ...typography.h2,
@@ -126,7 +133,10 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    // Matches Figma: Continue pinned 50px from the bottom of the screen.
+    bottom: CONTINUE_BOTTOM,
+    left: 16,
+    position: 'absolute',
+    right: 16,
   },
 });
