@@ -4,6 +4,12 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+import {
+  NavigationContainer,
+  StackActions,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -49,12 +55,19 @@ import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
+const Stack = createNativeStackNavigator();
+
+// Ref-based navigation so session logic (showStep, goHome) can navigate
+// without living inside a screen component.
+const navigationRef = createNavigationContainerRef();
+
 // Screen state must live inside SQLiteProvider's children. The provider is
 // memoized without comparing children, so updating screens from the parent
 // would not trigger a re-render.
 function AppContent() {
   const db = useSQLiteContext();
-  const [screen, setScreen] = useState(null);
+  const [initialRoute, setInitialRoute] = useState(null);
+  const [sessionMode, setSessionMode] = useState(SESSION_MODES.EXERCISE);
   const [preferences, setPreferences] = useState(null);
   const [currentWord, setCurrentWord] = useState(null);
   const [newWord, setNewWord] = useState(null);
@@ -100,11 +113,11 @@ function AppContent() {
         });
         await refreshHomeStats();
         await loadLevelCompleted();
-        setScreen('home');
+        setInitialRoute('Home');
         return;
       }
 
-      setScreen('onboarding');
+      setInitialRoute('Onboarding');
     }
 
     loadInitialScreen();
@@ -134,6 +147,14 @@ function AppContent() {
     return null;
   };
 
+  // Rounds within a session update state on the already-mounted Session
+  // screen; only navigate when coming from another screen.
+  const navigateToSession = () => {
+    if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'Session') {
+      navigationRef.navigate('Session');
+    }
+  };
+
   // What to show next (exercise, new word, or session complete) is decided
   // by getNextStep in learning/learning.js; this only maps the step to a screen.
   // For exercise and new-word steps the state updates run synchronously, so
@@ -141,7 +162,8 @@ function AppContent() {
   const showStep = async (step) => {
     if (step.type === STEP_TYPES.EXERCISE) {
       setCurrentWord(step.exercise);
-      setScreen('exercise');
+      setSessionMode(SESSION_MODES.EXERCISE);
+      navigateToSession();
       return;
     }
 
@@ -153,7 +175,8 @@ function AppContent() {
         }));
       }
       setNewWord(step.word);
-      setScreen('newWord');
+      setSessionMode(SESSION_MODES.NEW_WORD);
+      navigateToSession();
       return;
     }
 
@@ -163,7 +186,14 @@ function AppContent() {
 
     const session = await resetSessionProgress(db);
     setProgress(session.progress);
-    setScreen('sessionComplete');
+    // Replace the Session screen so back can't return to a finished session.
+    if (navigationRef.isReady()) {
+      if (navigationRef.getCurrentRoute()?.name === 'Session') {
+        navigationRef.dispatch(StackActions.replace('SessionComplete'));
+      } else {
+        navigationRef.navigate('SessionComplete');
+      }
+    }
   };
 
   const continueSession = async () => {
@@ -291,13 +321,29 @@ function AppContent() {
       };
     });
 
-  const goHome = async () => {
+  const clearPendingSession = () => {
     pendingStepRef.current = null;
     resolvedStepRef.current = null;
     setUpcomingWord(null);
+  };
+
+  const goHome = async () => {
+    clearPendingSession();
     await refreshHomeStats();
     await loadLevelCompleted();
-    setScreen('home');
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Home');
+    }
+  };
+
+  // Covers arriving at Home without goHome (hardware back / swipe gesture):
+  // drop any pending session step and refresh the stats.
+  const handleNavigationStateChange = () => {
+    if (navigationRef.getCurrentRoute()?.name === 'Home') {
+      clearPendingSession();
+      refreshHomeStats();
+      loadLevelCompleted();
+    }
   };
 
   const handleLevelCompletedConfirm = async () => {
@@ -305,81 +351,110 @@ function AppContent() {
     setLevelCompleted(null);
   };
 
-  if (screen == null) {
+  const renderSession = () => {
+    const isNewWord = sessionMode === SESSION_MODES.NEW_WORD;
+    const roundWord = isNewWord ? newWord : currentWord;
+    if (roundWord == null) {
+      return null;
+    }
+    return (
+      <SessionScreen
+        mode={sessionMode}
+        word={roundWord.text}
+        nextWord={upcomingWord}
+        options={isNewWord ? undefined : currentWord.options}
+        correctAnswer={isNewWord ? undefined : currentWord.correctAnswer}
+        progress={progress}
+        onClose={() => {
+          goHome();
+        }}
+        onAnswer={handleExerciseAnswer}
+        onLearn={handleLearn}
+        onAlreadyKnow={handleAlreadyKnow}
+        onTransitionEnd={handleCardTransitionEnd}
+      />
+    );
+  };
+
+  if (initialRoute == null) {
     return null;
   }
 
   return (
     <>
-      {screen === 'onboarding' && (
-        <OnboardingScreen
-          onContinue={async (prefs) => {
-            setPreferences(prefs);
-            await goHome();
-          }}
-        />
-      )}
-      {screen === 'home' && (
-        <HomeScreen
-          newWords={homeStats.newWords}
-          wordsToReview={homeStats.wordsToReview}
-          canStart={
-            homeStats.newWords > 0 ||
-            homeStats.wordsToReview > 0 ||
-            homeStats.activeWords > 0
-          }
-          currentLevel={preferences?.level}
-          levelCompleted={levelCompleted}
-          onLevelCompletedConfirm={handleLevelCompletedConfirm}
-          onStart={handleStart}
-          onTabPress={(tab) => {
-            if (tab === 'settings') {
-              setScreen('settings');
-            }
-          }}
-        />
-      )}
-      {screen === 'settings' && (
-        <SettingsScreen
-          preferences={preferences}
-          onPreferencesChange={setPreferences}
-          onBack={() => {
-            goHome();
-          }}
-          onTabPress={(tab) => {
-            if (tab === 'home') {
-              goHome();
-            }
-          }}
-        />
-      )}
-      {((screen === 'newWord' && newWord != null) ||
-        (screen === 'exercise' && currentWord != null)) && (
-        <SessionScreen
-          mode={screen === 'newWord' ? SESSION_MODES.NEW_WORD : SESSION_MODES.EXERCISE}
-          word={screen === 'newWord' ? newWord.text : currentWord.text}
-          nextWord={upcomingWord}
-          options={screen === 'exercise' ? currentWord.options : undefined}
-          correctAnswer={screen === 'exercise' ? currentWord.correctAnswer : undefined}
-          progress={progress}
-          onClose={() => {
-            goHome();
-          }}
-          onAnswer={handleExerciseAnswer}
-          onLearn={handleLearn}
-          onAlreadyKnow={handleAlreadyKnow}
-          onTransitionEnd={handleCardTransitionEnd}
-        />
-      )}
-      {screen === 'sessionComplete' && (
-        <SessionCompleteScreen
-          newWords={sessionStats.newWordsLearned}
-          wordsReviewed={sessionStats.wordsReviewed}
-          onHome={() => {
-            goHome();
-          }}
-        />
-      )}
+      <NavigationContainer
+        ref={navigationRef}
+        onStateChange={handleNavigationStateChange}
+      >
+        <Stack.Navigator
+          initialRouteName={initialRoute}
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="Onboarding">
+            {() => (
+              <OnboardingScreen
+                onContinue={async (prefs) => {
+                  setPreferences(prefs);
+                  await refreshHomeStats();
+                  await loadLevelCompleted();
+                  // Home becomes the new root; back must not return here.
+                  navigationRef.reset({ index: 0, routes: [{ name: 'Home' }] });
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Home">
+            {({ navigation }) => (
+              <HomeScreen
+                newWords={homeStats.newWords}
+                wordsToReview={homeStats.wordsToReview}
+                canStart={
+                  homeStats.newWords > 0 ||
+                  homeStats.wordsToReview > 0 ||
+                  homeStats.activeWords > 0
+                }
+                currentLevel={preferences?.level}
+                levelCompleted={levelCompleted}
+                onLevelCompletedConfirm={handleLevelCompletedConfirm}
+                onStart={handleStart}
+                onTabPress={(tab) => {
+                  if (tab === 'settings') {
+                    navigation.navigate('Settings');
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Settings">
+            {() => (
+              <SettingsScreen
+                preferences={preferences}
+                onPreferencesChange={setPreferences}
+                onBack={() => {
+                  goHome();
+                }}
+                onTabPress={(tab) => {
+                  if (tab === 'home') {
+                    goHome();
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Session">{() => renderSession()}</Stack.Screen>
+          <Stack.Screen name="SessionComplete">
+            {() => (
+              <SessionCompleteScreen
+                newWords={sessionStats.newWordsLearned}
+                wordsReviewed={sessionStats.wordsReviewed}
+                onHome={() => {
+                  goHome();
+                }}
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
       <StatusBar style="dark" />
     </>
   );
