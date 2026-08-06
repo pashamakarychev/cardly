@@ -24,6 +24,10 @@ const TABS = [
   },
 ];
 
+// Tab keys in the order they appear in the bar, so navigation can pick a
+// transition direction from a tab's position.
+export const TAB_KEYS = TABS.map(({ key }) => key);
+
 const useNativeGlass = isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
 
 export default function BottomNavigation({ activeTab, onTabPress }) {

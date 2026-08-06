@@ -9,14 +9,15 @@ import {
   StackActions,
   createNavigationContainerRef,
 } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import BottomNavigation from './components/BottomNavigation';
+import BottomNavigation, { TAB_KEYS } from './components/BottomNavigation';
 import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
 import { getSettings } from './db/settings';
 import {
@@ -51,17 +52,28 @@ import {
   resetSessionProgress,
   syncSessionProgress,
 } from './learning/sessionProgress';
+import {
+  forSlideFromLeft,
+  forSlideFromRight,
+  slideTransitionSpec,
+} from './navigation/transitions';
 import HomeScreen from './screens/HomeScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import { colors } from './theme';
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 
 // Ref-based navigation so session logic (showStep, goHome) can navigate
 // without living inside a screen component.
 const navigationRef = createNavigationContainerRef();
+
+const TAB_ROUTES = { home: 'Home', settings: 'Settings' };
+
+const routeToTab = (routeName) =>
+  TAB_KEYS.find((key) => TAB_ROUTES[key] === routeName) ?? null;
 
 // Screen state must live inside SQLiteProvider's children. The provider is
 // memoized without comparing children, so updating screens from the parent
@@ -71,6 +83,7 @@ function AppContent() {
   const insets = useSafeAreaInsets();
   const [initialRoute, setInitialRoute] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
+  const [slideFrom, setSlideFrom] = useState('right');
   const [sessionMode, setSessionMode] = useState(SESSION_MODES.EXERCISE);
   const [preferences, setPreferences] = useState(null);
   const [currentWord, setCurrentWord] = useState(null);
@@ -152,11 +165,28 @@ function AppContent() {
     return null;
   };
 
+  // Every transition is a horizontal slide; `from` is the edge the incoming
+  // screen enters from. It is applied to the whole navigator rather than to a
+  // single screen so the entering and leaving screens move as a pair, and it
+  // is set in the same batch as the navigation action so the animation that
+  // runs on the next commit already uses the new direction.
+  const navigateTo = (routeName, { from = 'right', replace = false } = {}) => {
+    if (!navigationRef.isReady()) {
+      return;
+    }
+    setSlideFrom(from);
+    if (replace) {
+      navigationRef.dispatch(StackActions.replace(routeName));
+    } else {
+      navigationRef.navigate(routeName);
+    }
+  };
+
   // Rounds within a session update state on the already-mounted Session
   // screen; only navigate when coming from another screen.
   const navigateToSession = () => {
     if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'Session') {
-      navigationRef.navigate('Session');
+      navigateTo('Session');
     }
   };
 
@@ -193,11 +223,9 @@ function AppContent() {
     setProgress(session.progress);
     // Replace the Session screen so back can't return to a finished session.
     if (navigationRef.isReady()) {
-      if (navigationRef.getCurrentRoute()?.name === 'Session') {
-        navigationRef.dispatch(StackActions.replace('SessionComplete'));
-      } else {
-        navigationRef.navigate('SessionComplete');
-      }
+      navigateTo('SessionComplete', {
+        replace: navigationRef.getCurrentRoute()?.name === 'Session',
+      });
     }
   };
 
@@ -332,25 +360,25 @@ function AppContent() {
     setUpcomingWord(null);
   };
 
-  // Navigate immediately; handleNavigationStateChange clears pending session
-  // state and refreshes the stats once Home becomes the active route.
+  // Pop back to Home when possible so the close animation mirrors Android
+  // back (left to right). navigateTo would push/focus Home with a forward
+  // slide-from-right instead.
   const goHome = () => {
-    if (navigationRef.isReady()) {
-      navigationRef.navigate('Home');
+    if (!navigationRef.isReady()) {
+      return;
     }
+    if (navigationRef.canGoBack()) {
+      navigationRef.goBack();
+      return;
+    }
+    navigateTo('Home');
   };
 
   // Covers arriving at Home without goHome (hardware back / swipe gesture):
   // drop any pending session step and refresh the stats. Also keeps the
   // fixed bottom nav in sync with the active route.
   const syncActiveTab = (routeName) => {
-    if (routeName === 'Home') {
-      setActiveTab('home');
-    } else if (routeName === 'Settings') {
-      setActiveTab('settings');
-    } else {
-      setActiveTab(null);
-    }
+    setActiveTab(routeToTab(routeName));
   };
 
   const handleNavigationStateChange = () => {
@@ -363,18 +391,44 @@ function AppContent() {
     }
   };
 
+  // Tabs are siblings rather than stacked screens, so each one replaces the
+  // other and the slide direction comes from their positions in the bar.
   const handleTabPress = (tab) => {
     if (!navigationRef.isReady()) {
       return;
     }
-    if (tab === 'home') {
-      goHome();
+    const targetIndex = TAB_KEYS.indexOf(tab);
+    const currentIndex = TAB_KEYS.indexOf(
+      routeToTab(navigationRef.getCurrentRoute()?.name),
+    );
+    if (targetIndex === -1 || currentIndex === -1 || targetIndex === currentIndex) {
       return;
     }
-    if (tab === 'settings') {
-      navigationRef.navigate('Settings');
-    }
+    navigateTo(TAB_ROUTES[tab], {
+      from: targetIndex > currentIndex ? 'right' : 'left',
+      replace: true,
+    });
   };
+
+  // Nothing to pop from a secondary tab, so Android back would otherwise leave
+  // the app. Send it to the first tab instead. Only the stable navigationRef
+  // and setSlideFrom are captured, so the handler never goes stale.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!navigationRef.isReady()) {
+        return false;
+      }
+      const currentIndex = TAB_KEYS.indexOf(
+        routeToTab(navigationRef.getCurrentRoute()?.name),
+      );
+      if (currentIndex <= 0) {
+        return false;
+      }
+      handleTabPress(TAB_KEYS[0]);
+      return true;
+    });
+    return () => subscription.remove();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLevelCompletedConfirm = async () => {
     await clearLevelCompleted(db);
@@ -418,7 +472,13 @@ function AppContent() {
       >
         <Stack.Navigator
           initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false }}
+          screenOptions={{
+            cardStyle: styles.card,
+            cardStyleInterpolator:
+              slideFrom === 'left' ? forSlideFromLeft : forSlideFromRight,
+            headerShown: false,
+            transitionSpec: slideTransitionSpec,
+          }}
         >
           <Stack.Screen name="Onboarding">
             {() => (
@@ -454,8 +514,10 @@ function AppContent() {
               <SettingsScreen
                 preferences={preferences}
                 onPreferencesChange={setPreferences}
+                // The back arrow leads to the Home tab, so it slides the same
+                // way as tapping that tab.
                 onBack={() => {
-                  goHome();
+                  handleTabPress('home');
                 }}
               />
             )}
@@ -498,19 +560,27 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <SQLiteProvider
-        databaseName={DATABASE_NAME}
-        assetSource={{ assetId: DATABASE_ASSET }}
-        onInit={initDb}
-      >
-        <AppContent />
-      </SQLiteProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <SQLiteProvider
+          databaseName={DATABASE_NAME}
+          assetSource={{ assetId: DATABASE_ASSET }}
+          onInit={initDb}
+        >
+          <AppContent />
+        </SQLiteProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  card: {
+    backgroundColor: colors.surface,
+  },
   navOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
