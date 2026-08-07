@@ -3,11 +3,13 @@ import {
   isGlassEffectAPIAvailable,
   isLiquidGlassAvailable,
 } from 'expo-glass-effect';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
 import { HomeFillIcon, HomeIcon } from './icons/HomeIcon';
 import { SettingsFillIcon, SettingsIcon } from './icons/SettingsIcon';
+import { useDelayedPressed } from './useDelayedPressed';
 
 const TABS = [
   {
@@ -30,29 +32,71 @@ export const TAB_KEYS = TABS.map(({ key }) => key);
 
 const useNativeGlass = isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
 
-export default function BottomNavigation({ activeTab, onTabPress }) {
-  const items = TABS.map(({ key, label, Icon, ActiveIcon }) => {
-    const active = key === activeTab;
-    const IconComponent = active ? ActiveIcon : Icon;
-    return (
-      <Pressable
-        key={key}
-        style={[styles.item, active && styles.itemActive]}
-        onPress={() => onTabPress?.(key)}
-      >
-        <IconComponent size={24} color={colors.textPrimary} />
-        <Text
-          numberOfLines={1}
-          style={[
-            active ? typography.navActive : typography.navInactive,
-            styles.label,
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    );
+// Active: rgba(0,0,0,0.05); Pressed: rgba(0,0,0,0.1) — Figma node 19034:319.
+function NavigationItem({
+  label,
+  Icon,
+  ActiveIcon,
+  active,
+  onPress,
+  onPressedChange,
+}) {
+  const { showPressed, pressProps } = useDelayedPressed({
+    onChange: onPressedChange,
   });
+  const emphasized = active || showPressed;
+  const IconComponent = emphasized ? ActiveIcon : Icon;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      {...pressProps}
+      style={[
+        styles.item,
+        active && styles.itemActive,
+        showPressed && styles.itemPressed,
+      ]}
+    >
+      <IconComponent size={24} color={colors.textPrimary} />
+      <Text
+        numberOfLines={1}
+        style={[
+          emphasized ? typography.navActive : typography.navInactive,
+          styles.label,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+export default function BottomNavigation({ activeTab, onTabPress }) {
+  // While another item is pressed, the active item drops to the default look
+  // so only one pill is highlighted at a time.
+  const [pressedTab, setPressedTab] = useState(null);
+
+  const items = TABS.map(({ key, label, Icon, ActiveIcon }) => (
+    <NavigationItem
+      key={key}
+      label={label}
+      Icon={Icon}
+      ActiveIcon={ActiveIcon}
+      // Stay active while this item itself is pressed so release goes
+      // pressed → active with no default frame. Only a different pressed
+      // item demotes the active one.
+      active={key === activeTab && (pressedTab == null || pressedTab === key)}
+      onPress={() => onTabPress?.(key)}
+      onPressedChange={(isPressed) => {
+        setPressedTab((current) => {
+          if (isPressed) {
+            return key;
+          }
+          return current === key ? null : current;
+        });
+      }}
+    />
+  ));
 
   if (useNativeGlass) {
     return (
@@ -90,6 +134,9 @@ const styles = StyleSheet.create({
   },
   itemActive: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  itemPressed: {
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   label: {
     color: colors.textPrimary,

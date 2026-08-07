@@ -404,6 +404,11 @@ function AppContent() {
     if (targetIndex === -1 || currentIndex === -1 || targetIndex === currentIndex) {
       return;
     }
+    // Optimistic: activeTab normally follows onStateChange, which runs a
+    // commit after the tap's release event — long enough for the released
+    // item to flash its default look between pressed and active. Setting it
+    // here lands in the same render batch as the pressed-state clear.
+    setActiveTab(tab);
     navigateTo(TAB_ROUTES[tab], {
       from: targetIndex > currentIndex ? 'right' : 'left',
       replace: true,

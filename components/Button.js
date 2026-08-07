@@ -18,7 +18,7 @@ export default function Button({
   const showFeedback = status === 'correct' || status === 'incorrect';
   const iconColor =
     status === 'correct' ? colors.successStrong : colors.errorStrong;
-  const { showPressed, onPressIn, onPressOut } = useDelayedPressed({
+  const { showPressed, pressProps } = useDelayedPressed({
     disabled: disabled || showFeedback,
   });
 
@@ -26,8 +26,7 @@ export default function Button({
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
+      {...pressProps}
       style={[
         styles.button,
         secondary && styles.buttonSecondary,
