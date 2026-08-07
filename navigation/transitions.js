@@ -1,4 +1,3 @@
-import { TransitionSpecs } from '@react-navigation/stack';
 import { Animated } from 'react-native';
 
 // Full-width horizontal slide. `edge` is the side the incoming screen enters
@@ -50,9 +49,22 @@ const forSlideFrom = (edge) => {
 export const forSlideFromRight = forSlideFrom('right');
 export const forSlideFromLeft = forSlideFrom('left');
 
+// Same as TransitionIOSSpec, but a bit snappier (lower mass, higher stiffness).
+const FasterSlideSpec = {
+  animation: 'spring',
+  config: {
+    stiffness: 1400,
+    damping: 600,
+    mass: 2,
+    overshootClamping: true,
+    restDisplacementThreshold: 10,
+    restSpeedThreshold: 10,
+  },
+};
+
 // The same spec both ways, so the two directions feel identical; the platform
 // defaults use different timings for opening and closing.
 export const slideTransitionSpec = {
-  open: TransitionSpecs.TransitionIOSSpec,
-  close: TransitionSpecs.TransitionIOSSpec,
+  open: FasterSlideSpec,
+  close: FasterSlideSpec,
 };
