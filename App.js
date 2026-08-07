@@ -57,11 +57,10 @@ import {
   forSlideFromRight,
   slideTransitionSpec,
 } from './navigation/transitions';
-import HomeScreen from './screens/HomeScreen';
+import MainTabsScreen from './screens/MainTabsScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
-import SettingsScreen from './screens/SettingsScreen';
 import { colors } from './theme';
 
 const Stack = createStackNavigator();
@@ -70,10 +69,8 @@ const Stack = createStackNavigator();
 // without living inside a screen component.
 const navigationRef = createNavigationContainerRef();
 
-const TAB_ROUTES = { home: 'Home', settings: 'Settings' };
-
-const routeToTab = (routeName) =>
-  TAB_KEYS.find((key) => TAB_ROUTES[key] === routeName) ?? null;
+// Bottom-nav tabs live inside a single Main stack screen (interactive pager).
+const MAIN_ROUTE = 'Main';
 
 // Screen state must live inside SQLiteProvider's children. The provider is
 // memoized without comparing children, so updating screens from the parent
@@ -84,6 +81,7 @@ function AppContent() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
   const [slideFrom, setSlideFrom] = useState('right');
+  const tabsRef = useRef(null);
   const [sessionMode, setSessionMode] = useState(SESSION_MODES.EXERCISE);
   const [preferences, setPreferences] = useState(null);
   const [currentWord, setCurrentWord] = useState(null);
@@ -131,7 +129,7 @@ function AppContent() {
         await refreshHomeStats();
         await loadLevelCompleted();
         setActiveTab('home');
-        setInitialRoute('Home');
+        setInitialRoute(MAIN_ROUTE);
         return;
       }
 
@@ -360,72 +358,56 @@ function AppContent() {
     setUpcomingWord(null);
   };
 
-  // Pop back to Home when possible so the close animation mirrors Android
-  // back (left to right). navigateTo would push/focus Home with a forward
+  // Pop back to Main when possible so the close animation mirrors Android
+  // back (left to right). navigateTo would push Main with a forward
   // slide-from-right instead.
   const goHome = () => {
     if (!navigationRef.isReady()) {
       return;
     }
+    setActiveTab('home');
+    tabsRef.current?.setPage(0, false);
     if (navigationRef.canGoBack()) {
       navigationRef.goBack();
       return;
     }
-    navigateTo('Home');
+    navigateTo(MAIN_ROUTE);
   };
 
-  // Covers arriving at Home without goHome (hardware back / swipe gesture):
-  // drop any pending session step and refresh the stats. Also keeps the
-  // fixed bottom nav in sync with the active route.
-  const syncActiveTab = (routeName) => {
-    setActiveTab(routeToTab(routeName));
-  };
-
+  // Bottom nav is only shown on Main; its active item follows the pager.
   const handleNavigationStateChange = () => {
     const routeName = navigationRef.getCurrentRoute()?.name;
-    syncActiveTab(routeName);
-    if (routeName === 'Home') {
+    if (routeName === MAIN_ROUTE) {
+      setActiveTab((tab) => tab ?? 'home');
       clearPendingSession();
       refreshHomeStats();
       loadLevelCompleted();
+      return;
     }
+    setActiveTab(null);
   };
 
-  // Tabs are siblings rather than stacked screens, so each one replaces the
-  // other and the slide direction comes from their positions in the bar.
+  // Tab taps animate the pager; swipes are handled interactively inside it.
   const handleTabPress = (tab) => {
-    if (!navigationRef.isReady()) {
-      return;
-    }
     const targetIndex = TAB_KEYS.indexOf(tab);
-    const currentIndex = TAB_KEYS.indexOf(
-      routeToTab(navigationRef.getCurrentRoute()?.name),
-    );
-    if (targetIndex === -1 || currentIndex === -1 || targetIndex === currentIndex) {
+    if (targetIndex === -1 || tab === activeTab) {
       return;
     }
-    // Optimistic: activeTab normally follows onStateChange, which runs a
-    // commit after the tap's release event — long enough for the released
-    // item to flash its default look between pressed and active. Setting it
-    // here lands in the same render batch as the pressed-state clear.
     setActiveTab(tab);
-    navigateTo(TAB_ROUTES[tab], {
-      from: targetIndex > currentIndex ? 'right' : 'left',
-      replace: true,
-    });
+    tabsRef.current?.setPage(targetIndex, true);
   };
 
   // Nothing to pop from a secondary tab, so Android back would otherwise leave
-  // the app. Send it to the first tab instead. Only the stable navigationRef
-  // and setSlideFrom are captured, so the handler never goes stale.
+  // the app. Send it to the first tab instead.
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!navigationRef.isReady()) {
         return false;
       }
-      const currentIndex = TAB_KEYS.indexOf(
-        routeToTab(navigationRef.getCurrentRoute()?.name),
-      );
+      if (navigationRef.getCurrentRoute()?.name !== MAIN_ROUTE) {
+        return false;
+      }
+      const currentIndex = TAB_KEYS.indexOf(activeTab);
       if (currentIndex <= 0) {
         return false;
       }
@@ -433,7 +415,7 @@ function AppContent() {
       return true;
     });
     return () => subscription.remove();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLevelCompletedConfirm = async () => {
     await clearLevelCompleted(db);
@@ -490,39 +472,45 @@ function AppContent() {
               <OnboardingScreen
                 onContinue={(prefs) => {
                   setPreferences(prefs);
-                  // Home becomes the new root; back must not return here.
-                  // Arriving at Home triggers the stats refresh.
-                  navigationRef.reset({ index: 0, routes: [{ name: 'Home' }] });
+                  setActiveTab('home');
+                  // Main becomes the new root; back must not return here.
+                  // Arriving at Main triggers the stats refresh.
+                  navigationRef.reset({
+                    index: 0,
+                    routes: [{ name: MAIN_ROUTE }],
+                  });
                 }}
               />
             )}
           </Stack.Screen>
-          <Stack.Screen name="Home">
+          <Stack.Screen name={MAIN_ROUTE}>
             {() => (
-              <HomeScreen
-                newWords={homeStats.newWords}
-                wordsToReview={homeStats.wordsToReview}
-                canStart={
-                  homeStats.newWords > 0 ||
-                  homeStats.wordsToReview > 0 ||
-                  homeStats.activeWords > 0
-                }
-                currentLevel={preferences?.level}
-                levelCompleted={levelCompleted}
-                onLevelCompletedConfirm={handleLevelCompletedConfirm}
-                onStart={handleStart}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="Settings">
-            {() => (
-              <SettingsScreen
-                preferences={preferences}
-                onPreferencesChange={setPreferences}
-                // The back arrow leads to the Home tab, so it slides the same
-                // way as tapping that tab.
-                onBack={() => {
-                  handleTabPress('home');
+              <MainTabsScreen
+                ref={tabsRef}
+                onPageIndexChange={(index) => {
+                  const tab = TAB_KEYS[index];
+                  if (tab != null) {
+                    setActiveTab(tab);
+                  }
+                }}
+                homeProps={{
+                  newWords: homeStats.newWords,
+                  wordsToReview: homeStats.wordsToReview,
+                  canStart:
+                    homeStats.newWords > 0 ||
+                    homeStats.wordsToReview > 0 ||
+                    homeStats.activeWords > 0,
+                  currentLevel: preferences?.level,
+                  levelCompleted,
+                  onLevelCompletedConfirm: handleLevelCompletedConfirm,
+                  onStart: handleStart,
+                }}
+                settingsProps={{
+                  preferences,
+                  onPreferencesChange: setPreferences,
+                  onBack: () => {
+                    handleTabPress('home');
+                  },
                 }}
               />
             )}

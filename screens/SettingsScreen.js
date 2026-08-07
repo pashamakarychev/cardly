@@ -1,6 +1,7 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
