@@ -85,8 +85,12 @@ export default function SettingsScreen({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-        <Text style={styles.title}>Settings</Text>
+        <View style={styles.header}>
+          <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+          <Text style={styles.title}>Settings</Text>
+          {/* Balances the back button so the title stays visually centered. */}
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.content}>
           <ChipSection
             label="I speak"
@@ -136,6 +140,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: 24,
     paddingHorizontal: 16,
+  },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  headerSpacer: {
+    height: 48,
+    width: 48,
   },
   title: {
     ...typography.h2,
