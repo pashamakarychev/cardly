@@ -109,40 +109,50 @@ export default function SessionScreen({
   };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 19 }]}>
+    <View
+      style={[
+        styles.screen,
+        {
+          paddingTop: insets.top + 19,
+          paddingBottom: Math.max(insets.bottom, 50),
+        },
+      ]}
+    >
       <View style={styles.header}>
         <IconButton icon={<XIcon />} onPress={onClose} />
         <ProgressBar progress={progress} />
       </View>
-      <View style={styles.flashcardContainer}>
+      {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
+      <View style={styles.spacer} />
+      <View style={styles.content}>
         <CardStack
           word={word}
           nextWord={nextWord}
           transitionTrigger={transitionTrigger}
           onTransitionEnd={handleTransitionEnd}
         />
-      </View>
-      <View style={styles.content}>
-        {mode === SESSION_MODES.EXERCISE ? (
-          options.map((option, index) => (
-            <Button
-              key={`${index}-${option}`}
-              title={capitalizeWord(TEST_CARD_WORD ?? option)}
-              variant="secondary"
-              status={statusFor(option)}
-              onPress={() => handleAnswer(option)}
-            />
-          ))
-        ) : (
-          <>
-            <Button title="Learn" onPress={() => handleChoice(onLearn)} />
-            <Button
-              title="Already know"
-              variant="secondary"
-              onPress={() => handleChoice(onAlreadyKnow)}
-            />
-          </>
-        )}
+        <View style={styles.buttons}>
+          {mode === SESSION_MODES.EXERCISE ? (
+            options.map((option, index) => (
+              <Button
+                key={`${index}-${option}`}
+                title={capitalizeWord(TEST_CARD_WORD ?? option)}
+                variant="secondary"
+                status={statusFor(option)}
+                onPress={() => handleAnswer(option)}
+              />
+            ))
+          ) : (
+            <>
+              <Button title="Learn" onPress={() => handleChoice(onLearn)} />
+              <Button
+                title="Already know"
+                variant="secondary"
+                onPress={() => handleChoice(onAlreadyKnow)}
+              />
+            </>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -152,7 +162,6 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: colors.surface,
     flex: 1,
-    gap: 24,
     paddingHorizontal: 16,
   },
   header: {
@@ -160,12 +169,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     height: 48,
+    width: '100%',
   },
-  flashcardContainer: {
-    height: 285,
-    justifyContent: 'flex-end',
+  spacer: {
+    flexGrow: 1,
+    flexShrink: 1,
+    maxHeight: 64,
+    minHeight: 24,
   },
   content: {
+    gap: 24,
+    width: '100%',
+  },
+  buttons: {
     gap: 12,
+    width: '100%',
   },
 });
