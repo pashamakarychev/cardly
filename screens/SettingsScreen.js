@@ -84,6 +84,9 @@ export default function SettingsScreen({
     await updateSettings(db, { newWordsPerDay: value });
   };
 
+  // Content clears the fixed header (48) + 24 gap under the top inset.
+  const scrollPaddingTop = topInset + HEADER_HEIGHT + 24;
+
   const chipSections = (
     <View style={styles.content}>
       <ChipSection
@@ -117,30 +120,12 @@ export default function SettingsScreen({
 
   return (
     <View style={styles.screen}>
-      {/* Back (and phone title) stay fixed; only the form scrolls. */}
-      <View
-        style={[
-          styles.fixedHeader,
-          { paddingTop: topInset, paddingHorizontal },
-        ]}
-      >
-        {isTablet ? (
-          <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-        ) : (
-          <View style={styles.header}>
-            <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-            <Text style={styles.title}>Settings</Text>
-            {/* Balances the back button so the title stays visually centered. */}
-            <View style={styles.headerSpacer} />
-          </View>
-        )}
-      </View>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: 24,
+            paddingTop: scrollPaddingTop,
             paddingHorizontal,
             paddingBottom: Math.max(
               navBottom + NAV_HEIGHT + 16,
@@ -164,7 +149,41 @@ export default function SettingsScreen({
           <View style={styles.container}>{chipSections}</View>
         )}
       </ScrollView>
-      <TopGradient height={topInset} />
+
+      {isTablet ? (
+        <>
+          <TopGradient height={topInset} />
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.fixedHeader,
+              { top: topInset, paddingHorizontal },
+            ]}
+          >
+            <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+          </View>
+        </>
+      ) : (
+        <>
+          {/* Fill over the safe area + fade across the fixed header. */}
+          <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.fixedHeader,
+              { top: topInset, paddingHorizontal },
+            ]}
+          >
+            <View style={styles.header}>
+              <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+              <Text style={styles.title}>Settings</Text>
+              {/* Balances the back button so the title stays visually centered. */}
+              <View style={styles.headerSpacer} />
+            </View>
+          </View>
+        </>
+      )}
+
       <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
       <Dialog
         visible={languageDialog != null}
@@ -180,10 +199,6 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: colors.surface,
     flex: 1,
-  },
-  fixedHeader: {
-    backgroundColor: colors.surface,
-    zIndex: 1,
   },
   scroll: {
     flex: 1,
@@ -211,6 +226,12 @@ const styles = StyleSheet.create({
     height: HEADER_HEIGHT,
     justifyContent: 'space-between',
     width: '100%',
+  },
+  fixedHeader: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 1,
   },
   header: {
     alignItems: 'center',

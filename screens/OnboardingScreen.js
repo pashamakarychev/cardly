@@ -14,6 +14,9 @@ import { colors, layout, typography } from '../theme';
 
 // Continue button geometry (matches Button + footer placement).
 const CONTINUE_HEIGHT = 60;
+// Figma Top/Bottom Gradient fade bands (mobile).
+const HEADER_HEIGHT = 48;
+const BOTTOM_FADE_HEIGHT = 64;
 
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
@@ -74,6 +77,11 @@ export default function OnboardingScreen({ onContinue }) {
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
 
+  // Mobile: content clears the fixed title (48) + 24 gap under the top inset.
+  const scrollPaddingTop = isTablet
+    ? topInset
+    : topInset + HEADER_HEIGHT + 24;
+
   const chipSections = (
     <View style={styles.content}>
       <ChipSection
@@ -107,23 +115,12 @@ export default function OnboardingScreen({ onContinue }) {
 
   return (
     <View style={styles.screen}>
-      {/* Phone: title stays fixed. Tablet: title scrolls with the centered form. */}
-      {!isTablet && (
-        <View
-          style={[
-            styles.fixedTitle,
-            { paddingTop: topInset, paddingHorizontal },
-          ]}
-        >
-          <Text style={styles.title}>Let's get started</Text>
-        </View>
-      )}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: isTablet ? topInset : 24,
+            paddingTop: scrollPaddingTop,
             paddingHorizontal,
             // Clears the absolutely positioned Continue button.
             paddingBottom: CONTINUE_HEIGHT + continueBottom + 24,
@@ -143,8 +140,29 @@ export default function OnboardingScreen({ onContinue }) {
           {chipSections}
         </View>
       </ScrollView>
-      <TopGradient height={topInset} />
-      <BottomGradient bottom={continueBottom} height={CONTINUE_HEIGHT} />
+
+      {isTablet ? (
+        <TopGradient height={topInset} />
+      ) : (
+        <>
+          {/* Fill over the safe area + fade across the fixed title. */}
+          <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.fixedHeader,
+              { top: topInset, paddingHorizontal },
+            ]}
+          >
+            <Text style={styles.title}>Let's get started</Text>
+          </View>
+        </>
+      )}
+
+      <BottomGradient
+        bottom={continueBottom}
+        height={isTablet ? CONTINUE_HEIGHT : BOTTOM_FADE_HEIGHT}
+      />
       <View
         style={[
           styles.footer,
@@ -168,10 +186,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     flex: 1,
   },
-  fixedTitle: {
-    backgroundColor: colors.surface,
-    zIndex: 1,
-  },
   scroll: {
     flex: 1,
   },
@@ -191,6 +205,14 @@ const styles = StyleSheet.create({
     paddingBottom: layout.tabletContentPaddingBottom,
     paddingTop: layout.tabletContentPaddingTop,
   },
+  fixedHeader: {
+    height: HEADER_HEIGHT,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 1,
+  },
   title: {
     ...typography.h2,
     color: colors.textPrimary,
@@ -204,6 +226,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
+    zIndex: 1,
   },
   footerInner: {
     alignSelf: 'center',
