@@ -95,9 +95,7 @@ export default function OnboardingScreen({ onContinue }) {
             isTablet ? styles.containerTablet : null,
           ]}
         >
-          <Text style={[styles.title, isTablet ? styles.titleTablet : null]}>
-            Let's get started
-          </Text>
+          <Text style={styles.title}>Let's get started</Text>
           <View style={styles.content}>
             <ChipSection
               label="I speak"
@@ -175,8 +173,6 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h2,
     color: colors.textPrimary,
-  },
-  titleTablet: {
     textAlign: 'center',
     width: '100%',
   },
