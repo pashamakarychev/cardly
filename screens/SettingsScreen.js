@@ -17,6 +17,7 @@ import {
   WORDS_PER_DAY,
 } from '../constants/preferences';
 import { updateSettings } from '../db/settings';
+import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
 // Bottom nav geometry (matches BottomNavigation + App nav overlay).
@@ -30,8 +31,16 @@ export default function SettingsScreen({
 }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const topInset = insets.top + layout.contentTopPadding;
-  const navBottom = insets.bottom + NAV_BOTTOM_PADDING;
+  const isTablet = useIsTablet();
+  const topInset = isTablet
+    ? Math.max(insets.top, layout.tabletScreenPadding)
+    : insets.top + layout.contentTopPadding;
+  const navBottom = isTablet
+    ? Math.max(insets.bottom, layout.screenPaddingBottom)
+    : insets.bottom + NAV_BOTTOM_PADDING;
+  const paddingHorizontal = isTablet
+    ? layout.tabletScreenPadding
+    : layout.screenPaddingX;
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
   const [level, setLevel] = useState(preferences?.level ?? 'Beginner');
@@ -74,6 +83,37 @@ export default function SettingsScreen({
     await updateSettings(db, { newWordsPerDay: value });
   };
 
+  const chipSections = (
+    <View style={styles.content}>
+      <ChipSection
+        label="I speak"
+        options={SPEAK_LANGUAGES}
+        selected={speaks}
+        onSelect={handleSpeaksSelect}
+        disabledOptions={learning ? [learning] : []}
+      />
+      <ChipSection
+        label="I want to learn"
+        options={LEARN_LANGUAGES}
+        selected={learning}
+        onSelect={handleLearningSelect}
+        disabledOptions={speaks ? [speaks] : []}
+      />
+      <ChipSection
+        label="My level"
+        options={LEVELS}
+        selected={level}
+        onSelect={handleLevelSelect}
+      />
+      <ChipSection
+        label="New words per day"
+        options={WORDS_PER_DAY}
+        selected={wordsPerDay}
+        onSelect={handleWordsPerDaySelect}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -81,50 +121,42 @@ export default function SettingsScreen({
           styles.scrollContent,
           {
             paddingTop: topInset,
+            paddingHorizontal,
             paddingBottom: Math.max(
-              insets.bottom + NAV_BOTTOM_PADDING + NAV_HEIGHT + 16,
-              layout.screenPaddingBottom,
+              navBottom + NAV_HEIGHT + 16,
+              isTablet
+                ? layout.tabletScreenPadding
+                : layout.screenPaddingBottom,
             ),
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-            <Text style={styles.title}>Settings</Text>
-            {/* Balances the back button so the title stays visually centered. */}
-            <View style={styles.headerSpacer} />
+        {isTablet ? (
+          <>
+            {/* Tablet: back stays top-left; title + chips center in the 600px column. */}
+            <View style={styles.tabletBackRow}>
+              <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+            </View>
+            <View style={styles.tabletContainer}>
+              <View style={styles.tabletTitleRow}>
+                <Text style={styles.title}>Settings</Text>
+                <View style={styles.headerSpacer} />
+              </View>
+              {chipSections}
+            </View>
+          </>
+        ) : (
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+              <Text style={styles.title}>Settings</Text>
+              {/* Balances the back button so the title stays visually centered. */}
+              <View style={styles.headerSpacer} />
+            </View>
+            {chipSections}
           </View>
-          <View style={styles.content}>
-            <ChipSection
-              label="I speak"
-              options={SPEAK_LANGUAGES}
-              selected={speaks}
-              onSelect={handleSpeaksSelect}
-              disabledOptions={learning ? [learning] : []}
-            />
-            <ChipSection
-              label="I want to learn"
-              options={LEARN_LANGUAGES}
-              selected={learning}
-              onSelect={handleLearningSelect}
-              disabledOptions={speaks ? [speaks] : []}
-            />
-            <ChipSection
-              label="My level"
-              options={LEVELS}
-              selected={level}
-              onSelect={handleLevelSelect}
-            />
-            <ChipSection
-              label="New words per day"
-              options={WORDS_PER_DAY}
-              selected={wordsPerDay}
-              onSelect={handleWordsPerDaySelect}
-            />
-          </View>
-        </View>
+        )}
       </ScrollView>
       <TopGradient height={topInset} />
       <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
@@ -146,12 +178,32 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
-    paddingHorizontal: layout.screenPaddingX,
   },
   container: {
     flexGrow: 1,
     gap: 24,
     maxWidth: layout.maxContentWidth,
+    width: '100%',
+  },
+  tabletBackRow: {
+    // Matches Figma screen gap-[24px] between the back control and container.
+    marginBottom: 24,
+    width: '100%',
+  },
+  tabletContainer: {
+    flexGrow: 1,
+    gap: 24,
+    justifyContent: 'center',
+    maxWidth: layout.maxContentWidth,
+    paddingBottom: layout.tabletContentPaddingBottom,
+    paddingTop: layout.tabletContentPaddingTop,
+    width: '100%',
+  },
+  tabletTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    height: 48,
+    justifyContent: 'space-between',
     width: '100%',
   },
   header: {

@@ -57,11 +57,12 @@ import {
   forSlideFromRight,
   slideTransitionSpec,
 } from './navigation/transitions';
+import { useIsTablet } from './hooks/useIsTablet';
 import MainTabsScreen from './screens/MainTabsScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
-import { colors } from './theme';
+import { colors, layout } from './theme';
 
 const Stack = createStackNavigator();
 
@@ -78,6 +79,7 @@ const MAIN_ROUTE = 'Main';
 function AppContent() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const isTablet = useIsTablet();
   const [initialRoute, setInitialRoute] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
   const [slideFrom, setSlideFrom] = useState('right');
@@ -531,7 +533,18 @@ function AppContent() {
       </NavigationContainer>
       {activeTab != null && (
         <View pointerEvents="box-none" style={styles.navOverlay}>
-          <View style={[styles.navContainer, { bottom: insets.bottom + 16 }]}>
+          <View
+            style={[
+              styles.navContainer,
+              {
+                // Phone: 16px above the home indicator. Tablet frames pin the
+                // bar 50px from the bottom edge (Figma Home / Settings).
+                bottom: isTablet
+                  ? Math.max(insets.bottom, layout.screenPaddingBottom)
+                  : insets.bottom + 16,
+              },
+            ]}
+          >
             <BottomNavigation activeTab={activeTab} onTabPress={handleTabPress} />
           </View>
         </View>

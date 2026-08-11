@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import MetricCard from '../components/MetricCard';
 import { CheckIcon } from '../components/icons/CheckIcon';
+import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
 export default function SessionCompleteScreen({
@@ -12,19 +13,29 @@ export default function SessionCompleteScreen({
   onHome,
 }) {
   const insets = useSafeAreaInsets();
+  const isTablet = useIsTablet();
+
+  const screenPadding = isTablet
+    ? {
+        paddingTop: Math.max(insets.top, layout.tabletScreenPadding),
+        paddingBottom: Math.max(insets.bottom, layout.tabletScreenPadding),
+        paddingHorizontal: layout.tabletScreenPadding,
+      }
+    : {
+        paddingTop: insets.top + layout.contentTopPadding,
+        paddingBottom: Math.max(insets.bottom, layout.screenPaddingBottom),
+        paddingHorizontal: layout.screenPaddingX,
+      };
 
   return (
-    <View
-      style={[
-        styles.screen,
-        {
-          paddingTop: insets.top + layout.contentTopPadding,
-          paddingBottom: Math.max(insets.bottom, layout.screenPaddingBottom),
-        },
-      ]}
-    >
-      <View style={styles.container}>
-        <View style={styles.content}>
+    <View style={[styles.screen, screenPadding]}>
+      <View
+        style={[
+          styles.container,
+          isTablet ? styles.containerTablet : null,
+        ]}
+      >
+        <View style={[styles.content, isTablet ? null : styles.contentPhone]}>
           <View style={styles.iconContainer}>
             <CheckIcon size={48} color={colors.primary} />
           </View>
@@ -34,7 +45,13 @@ export default function SessionCompleteScreen({
             <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
           </View>
         </View>
-        <Button title="Home" onPress={onHome} />
+        {isTablet ? (
+          <View style={styles.footerTablet}>
+            <Button title="Home" onPress={onHome} />
+          </View>
+        ) : (
+          <Button title="Home" onPress={onHome} />
+        )}
       </View>
     </View>
   );
@@ -45,7 +62,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     flex: 1,
-    paddingHorizontal: layout.screenPaddingX,
   },
   container: {
     flex: 1,
@@ -53,12 +69,26 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
+  containerTablet: {
+    justifyContent: 'center',
+    paddingBottom: layout.tabletContentPaddingBottom,
+    paddingTop: layout.tabletContentPaddingTop,
+  },
   content: {
     alignItems: 'center',
-    flex: 1,
     gap: 24,
-    justifyContent: 'center',
     width: '100%',
+  },
+  contentPhone: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  footerTablet: {
+    // Pins Home to the bottom of the max-width column (Figma absolute bottom-0).
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
   iconContainer: {
     backgroundColor: colors.background,

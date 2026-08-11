@@ -9,6 +9,7 @@ import ChipSection from '../components/ChipSection';
 import TopGradient from '../components/TopGradient';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { completeOnboarding } from '../db/settings';
+import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
 // Continue button geometry (matches Button + footer placement).
@@ -17,6 +18,7 @@ const CONTINUE_HEIGHT = 60;
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const isTablet = useIsTablet();
   const [speaks, setSpeaks] = useState(null);
   const [learning, setLearning] = useState(null);
   const [level, setLevel] = useState(null);
@@ -62,18 +64,40 @@ export default function OnboardingScreen({ onContinue }) {
     }
   };
 
-  const topInset = insets.top + layout.contentTopPadding;
-  const continueBottom = layout.screenPaddingBottom;
+  const topInset = isTablet
+    ? Math.max(insets.top, layout.tabletScreenPadding)
+    : insets.top + layout.contentTopPadding;
+  const continueBottom = isTablet
+    ? Math.max(insets.bottom, layout.tabletScreenPadding)
+    : layout.screenPaddingBottom;
+  const paddingHorizontal = isTablet
+    ? layout.tabletScreenPadding
+    : layout.screenPaddingX;
 
   return (
     <View style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: topInset }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topInset,
+            paddingHorizontal,
+            // Clears the absolutely positioned Continue button.
+            paddingBottom: CONTINUE_HEIGHT + continueBottom + 24,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.container}>
-          <Text style={styles.title}>Let's get started</Text>
+        <View
+          style={[
+            styles.container,
+            isTablet ? styles.containerTablet : null,
+          ]}
+        >
+          <Text style={[styles.title, isTablet ? styles.titleTablet : null]}>
+            Let's get started
+          </Text>
           <View style={styles.content}>
             <ChipSection
               label="I speak"
@@ -106,7 +130,12 @@ export default function OnboardingScreen({ onContinue }) {
       </ScrollView>
       <TopGradient height={topInset} />
       <BottomGradient bottom={continueBottom} height={CONTINUE_HEIGHT} />
-      <View style={[styles.footer, { bottom: continueBottom }]}>
+      <View
+        style={[
+          styles.footer,
+          { bottom: continueBottom, paddingHorizontal },
+        ]}
+      >
         <View style={styles.footerInner}>
           <Button
             title="Continue"
@@ -129,25 +158,33 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     alignItems: 'center',
-    // Clears the absolutely positioned Continue button (60px) + 50px bottom inset.
-    paddingBottom: CONTINUE_HEIGHT + layout.screenPaddingBottom + 24,
-    paddingHorizontal: layout.screenPaddingX,
+    flexGrow: 1,
   },
   container: {
     gap: 24,
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
+  containerTablet: {
+    // Vertically centers the form when it fits; still scrolls when it doesn't.
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingBottom: layout.tabletContentPaddingBottom,
+    paddingTop: layout.tabletContentPaddingTop,
+  },
   title: {
     ...typography.h2,
     color: colors.textPrimary,
+  },
+  titleTablet: {
+    textAlign: 'center',
+    width: '100%',
   },
   content: {
     gap: 24,
   },
   footer: {
     left: 0,
-    paddingHorizontal: layout.screenPaddingX,
     position: 'absolute',
     right: 0,
   },
