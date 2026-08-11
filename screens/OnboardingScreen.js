@@ -74,14 +74,56 @@ export default function OnboardingScreen({ onContinue }) {
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
 
+  const chipSections = (
+    <View style={styles.content}>
+      <ChipSection
+        label="I speak"
+        options={SPEAK_LANGUAGES}
+        selected={speaks}
+        onSelect={handleSpeaksSelect}
+        disabledOptions={learning ? [learning] : []}
+      />
+      <ChipSection
+        label="I want to learn"
+        options={LEARN_LANGUAGES}
+        selected={learning}
+        onSelect={handleLearningSelect}
+        disabledOptions={speaks ? [speaks] : []}
+      />
+      <ChipSection
+        label="My level"
+        options={LEVELS}
+        selected={level}
+        onSelect={setLevel}
+      />
+      <ChipSection
+        label="New words per day"
+        options={WORDS_PER_DAY}
+        selected={wordsPerDay}
+        onSelect={setWordsPerDay}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
+      {/* Phone: title stays fixed. Tablet: title scrolls with the centered form. */}
+      {!isTablet && (
+        <View
+          style={[
+            styles.fixedTitle,
+            { paddingTop: topInset, paddingHorizontal },
+          ]}
+        >
+          <Text style={styles.title}>Let's get started</Text>
+        </View>
+      )}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: topInset,
+            paddingTop: isTablet ? topInset : 24,
             paddingHorizontal,
             // Clears the absolutely positioned Continue button.
             paddingBottom: CONTINUE_HEIGHT + continueBottom + 24,
@@ -95,35 +137,10 @@ export default function OnboardingScreen({ onContinue }) {
             isTablet ? styles.containerTablet : null,
           ]}
         >
-          <Text style={styles.title}>Let's get started</Text>
-          <View style={styles.content}>
-            <ChipSection
-              label="I speak"
-              options={SPEAK_LANGUAGES}
-              selected={speaks}
-              onSelect={handleSpeaksSelect}
-              disabledOptions={learning ? [learning] : []}
-            />
-            <ChipSection
-              label="I want to learn"
-              options={LEARN_LANGUAGES}
-              selected={learning}
-              onSelect={handleLearningSelect}
-              disabledOptions={speaks ? [speaks] : []}
-            />
-            <ChipSection
-              label="My level"
-              options={LEVELS}
-              selected={level}
-              onSelect={setLevel}
-            />
-            <ChipSection
-              label="New words per day"
-              options={WORDS_PER_DAY}
-              selected={wordsPerDay}
-              onSelect={setWordsPerDay}
-            />
-          </View>
+          {isTablet && (
+            <Text style={styles.title}>Let's get started</Text>
+          )}
+          {chipSections}
         </View>
       </ScrollView>
       <TopGradient height={topInset} />
@@ -150,6 +167,10 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: colors.surface,
     flex: 1,
+  },
+  fixedTitle: {
+    backgroundColor: colors.surface,
+    zIndex: 1,
   },
   scroll: {
     flex: 1,

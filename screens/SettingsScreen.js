@@ -23,6 +23,7 @@ import { colors, layout, typography } from '../theme';
 // Bottom nav geometry (matches BottomNavigation + App nav overlay).
 const NAV_BOTTOM_PADDING = 16;
 const NAV_HEIGHT = 64;
+const HEADER_HEIGHT = 48;
 
 export default function SettingsScreen({
   preferences,
@@ -116,11 +117,30 @@ export default function SettingsScreen({
 
   return (
     <View style={styles.screen}>
+      {/* Back (and phone title) stay fixed; only the form scrolls. */}
+      <View
+        style={[
+          styles.fixedHeader,
+          { paddingTop: topInset, paddingHorizontal },
+        ]}
+      >
+        {isTablet ? (
+          <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+        ) : (
+          <View style={styles.header}>
+            <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+            <Text style={styles.title}>Settings</Text>
+            {/* Balances the back button so the title stays visually centered. */}
+            <View style={styles.headerSpacer} />
+          </View>
+        )}
+      </View>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: topInset,
+            paddingTop: 24,
             paddingHorizontal,
             paddingBottom: Math.max(
               navBottom + NAV_HEIGHT + 16,
@@ -133,29 +153,15 @@ export default function SettingsScreen({
         showsVerticalScrollIndicator={false}
       >
         {isTablet ? (
-          <>
-            {/* Tablet: back stays top-left; title + chips center in the 600px column. */}
-            <View style={styles.tabletBackRow}>
-              <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-            </View>
-            <View style={styles.tabletContainer}>
-              <View style={styles.tabletTitleRow}>
-                <Text style={styles.title}>Settings</Text>
-                <View style={styles.headerSpacer} />
-              </View>
-              {chipSections}
-            </View>
-          </>
-        ) : (
-          <View style={styles.container}>
-            <View style={styles.header}>
-              <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+          <View style={styles.tabletContainer}>
+            <View style={styles.tabletTitleRow}>
               <Text style={styles.title}>Settings</Text>
-              {/* Balances the back button so the title stays visually centered. */}
               <View style={styles.headerSpacer} />
             </View>
             {chipSections}
           </View>
+        ) : (
+          <View style={styles.container}>{chipSections}</View>
         )}
       </ScrollView>
       <TopGradient height={topInset} />
@@ -175,19 +181,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     flex: 1,
   },
+  fixedHeader: {
+    backgroundColor: colors.surface,
+    zIndex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
   },
   container: {
-    flexGrow: 1,
-    gap: 24,
     maxWidth: layout.maxContentWidth,
-    width: '100%',
-  },
-  tabletBackRow: {
-    // Matches Figma screen gap-[24px] between the back control and container.
-    marginBottom: 24,
     width: '100%',
   },
   tabletContainer: {
@@ -202,20 +208,20 @@ const styles = StyleSheet.create({
   tabletTitleRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    height: 48,
+    height: HEADER_HEIGHT,
     justifyContent: 'space-between',
     width: '100%',
   },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
-    height: 48,
+    height: HEADER_HEIGHT,
     justifyContent: 'space-between',
     width: '100%',
   },
   headerSpacer: {
-    height: 48,
-    width: 48,
+    height: HEADER_HEIGHT,
+    width: HEADER_HEIGHT,
   },
   title: {
     ...typography.h2,
