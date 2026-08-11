@@ -18,6 +18,7 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
 ) {
   const scrollRef = useRef(null);
   const widthRef = useRef(0);
+  const pageIndexRef = useRef(0);
   const [width, setWidth] = useState(0);
   // Ignore programmatic scrolls so they don't echo back as page changes.
   const programmaticRef = useRef(false);
@@ -28,6 +29,7 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
       if (pageWidth <= 0 || index < 0 || index >= TAB_KEYS.length) {
         return;
       }
+      pageIndexRef.current = index;
       programmaticRef.current = animated;
       scrollRef.current?.scrollTo({
         x: index * pageWidth,
@@ -49,6 +51,7 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
       0,
       Math.min(TAB_KEYS.length - 1, Math.round(x / pageWidth)),
     );
+    pageIndexRef.current = index;
     onPageIndexChange?.(index);
   };
 
@@ -60,8 +63,21 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
         if (nextWidth === widthRef.current) {
           return;
         }
+        const hadWidth = widthRef.current > 0;
         widthRef.current = nextWidth;
         setWidth(nextWidth);
+        // Rotation / split-view can change page width; keep the active tab
+        // snapped so Home/Settings aren't left mid-page with a stale offset.
+        if (hadWidth) {
+          programmaticRef.current = false;
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollTo({
+              x: pageIndexRef.current * nextWidth,
+              y: 0,
+              animated: false,
+            });
+          });
+        }
       }}
     >
       {width > 0 ? (
