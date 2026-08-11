@@ -7,7 +7,7 @@ import CardStack from '../components/CardStack';
 import IconButton from '../components/IconButton';
 import ProgressBar from '../components/ProgressBar';
 import { XIcon } from '../components/icons/XIcon';
-import { colors } from '../theme';
+import { colors, layout } from '../theme';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
 // Pause after a tap so the button feedback registers before the cards move
@@ -113,45 +113,47 @@ export default function SessionScreen({
       style={[
         styles.screen,
         {
-          paddingTop: insets.top + 19,
-          paddingBottom: Math.max(insets.bottom, 50),
+          paddingTop: insets.top + layout.contentTopPadding,
+          paddingBottom: Math.max(insets.bottom, layout.screenPaddingBottom),
         },
       ]}
     >
-      <View style={styles.header}>
-        <IconButton icon={<XIcon />} onPress={onClose} />
-        <ProgressBar progress={progress} />
-      </View>
-      {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
-      <View style={styles.spacer} />
-      <View style={styles.content}>
-        <CardStack
-          word={word}
-          nextWord={nextWord}
-          transitionTrigger={transitionTrigger}
-          onTransitionEnd={handleTransitionEnd}
-        />
-        <View style={styles.buttons}>
-          {mode === SESSION_MODES.EXERCISE ? (
-            options.map((option, index) => (
-              <Button
-                key={`${index}-${option}`}
-                title={capitalizeWord(TEST_CARD_WORD ?? option)}
-                variant="secondary"
-                status={statusFor(option)}
-                onPress={() => handleAnswer(option)}
-              />
-            ))
-          ) : (
-            <>
-              <Button title="Learn" onPress={() => handleChoice(onLearn)} />
-              <Button
-                title="Already know"
-                variant="secondary"
-                onPress={() => handleChoice(onAlreadyKnow)}
-              />
-            </>
-          )}
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <IconButton icon={<XIcon />} onPress={onClose} />
+          <ProgressBar progress={progress} />
+        </View>
+        {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
+        <View style={styles.spacer} />
+        <View style={styles.content}>
+          <CardStack
+            word={word}
+            nextWord={nextWord}
+            transitionTrigger={transitionTrigger}
+            onTransitionEnd={handleTransitionEnd}
+          />
+          <View style={styles.buttons}>
+            {mode === SESSION_MODES.EXERCISE ? (
+              options.map((option, index) => (
+                <Button
+                  key={`${index}-${option}`}
+                  title={capitalizeWord(TEST_CARD_WORD ?? option)}
+                  variant="secondary"
+                  status={statusFor(option)}
+                  onPress={() => handleAnswer(option)}
+                />
+              ))
+            ) : (
+              <>
+                <Button title="Learn" onPress={() => handleChoice(onLearn)} />
+                <Button
+                  title="Already know"
+                  variant="secondary"
+                  onPress={() => handleChoice(onAlreadyKnow)}
+                />
+              </>
+            )}
+          </View>
         </View>
       </View>
     </View>
@@ -160,9 +162,15 @@ export default function SessionScreen({
 
 const styles = StyleSheet.create({
   screen: {
+    alignItems: 'center',
     backgroundColor: colors.surface,
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: layout.screenPaddingX,
+  },
+  container: {
+    flex: 1,
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
   header: {
     alignItems: 'center',

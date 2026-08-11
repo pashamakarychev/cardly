@@ -9,13 +9,10 @@ import ChipSection from '../components/ChipSection';
 import TopGradient from '../components/TopGradient';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { completeOnboarding } from '../db/settings';
-import { colors, typography } from '../theme';
+import { colors, layout, typography } from '../theme';
 
 // Continue button geometry (matches Button + footer placement).
-const CONTINUE_BOTTOM = 50;
 const CONTINUE_HEIGHT = 60;
-// Matches Figma content top inset under the Top Gradient.
-const CONTENT_TOP_PADDING = 19;
 
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
@@ -65,7 +62,8 @@ export default function OnboardingScreen({ onContinue }) {
     }
   };
 
-  const topInset = insets.top + CONTENT_TOP_PADDING;
+  const topInset = insets.top + layout.contentTopPadding;
+  const continueBottom = layout.screenPaddingBottom;
 
   return (
     <View style={styles.screen}>
@@ -74,44 +72,48 @@ export default function OnboardingScreen({ onContinue }) {
         contentContainerStyle={[styles.scrollContent, { paddingTop: topInset }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Let's get started</Text>
-        <View style={styles.content}>
-          <ChipSection
-            label="I speak"
-            options={SPEAK_LANGUAGES}
-            selected={speaks}
-            onSelect={handleSpeaksSelect}
-            disabledOptions={learning ? [learning] : []}
-          />
-          <ChipSection
-            label="I want to learn"
-            options={LEARN_LANGUAGES}
-            selected={learning}
-            onSelect={handleLearningSelect}
-            disabledOptions={speaks ? [speaks] : []}
-          />
-          <ChipSection
-            label="My level"
-            options={LEVELS}
-            selected={level}
-            onSelect={setLevel}
-          />
-          <ChipSection
-            label="New words per day"
-            options={WORDS_PER_DAY}
-            selected={wordsPerDay}
-            onSelect={setWordsPerDay}
-          />
+        <View style={styles.container}>
+          <Text style={styles.title}>Let's get started</Text>
+          <View style={styles.content}>
+            <ChipSection
+              label="I speak"
+              options={SPEAK_LANGUAGES}
+              selected={speaks}
+              onSelect={handleSpeaksSelect}
+              disabledOptions={learning ? [learning] : []}
+            />
+            <ChipSection
+              label="I want to learn"
+              options={LEARN_LANGUAGES}
+              selected={learning}
+              onSelect={handleLearningSelect}
+              disabledOptions={speaks ? [speaks] : []}
+            />
+            <ChipSection
+              label="My level"
+              options={LEVELS}
+              selected={level}
+              onSelect={setLevel}
+            />
+            <ChipSection
+              label="New words per day"
+              options={WORDS_PER_DAY}
+              selected={wordsPerDay}
+              onSelect={setWordsPerDay}
+            />
+          </View>
         </View>
       </ScrollView>
       <TopGradient height={topInset} />
-      <BottomGradient bottom={CONTINUE_BOTTOM} height={CONTINUE_HEIGHT} />
-      <View style={styles.footer}>
-        <Button
-          title="Continue"
-          disabled={!isComplete || saving}
-          onPress={handleContinue}
-        />
+      <BottomGradient bottom={continueBottom} height={CONTINUE_HEIGHT} />
+      <View style={[styles.footer, { bottom: continueBottom }]}>
+        <View style={styles.footerInner}>
+          <Button
+            title="Continue"
+            disabled={!isComplete || saving}
+            onPress={handleContinue}
+          />
+        </View>
       </View>
     </View>
   );
@@ -126,10 +128,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    gap: 24,
+    alignItems: 'center',
     // Clears the absolutely positioned Continue button (60px) + 50px bottom inset.
-    paddingBottom: 134,
-    paddingHorizontal: 16,
+    paddingBottom: CONTINUE_HEIGHT + layout.screenPaddingBottom + 24,
+    paddingHorizontal: layout.screenPaddingX,
+  },
+  container: {
+    gap: 24,
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
   title: {
     ...typography.h2,
@@ -139,10 +146,14 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   footer: {
-    // Matches Figma: Continue pinned 50px from the bottom of the screen.
-    bottom: CONTINUE_BOTTOM,
-    left: 16,
+    left: 0,
+    paddingHorizontal: layout.screenPaddingX,
     position: 'absolute',
-    right: 16,
+    right: 0,
+  },
+  footerInner: {
+    alignSelf: 'center',
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
 });

@@ -17,13 +17,11 @@ import {
   WORDS_PER_DAY,
 } from '../constants/preferences';
 import { updateSettings } from '../db/settings';
-import { colors, typography } from '../theme';
+import { colors, layout, typography } from '../theme';
 
 // Bottom nav geometry (matches BottomNavigation + App nav overlay).
 const NAV_BOTTOM_PADDING = 16;
 const NAV_HEIGHT = 64;
-// Matches Figma content top inset under the Top Gradient.
-const CONTENT_TOP_PADDING = 19;
 
 export default function SettingsScreen({
   preferences,
@@ -32,7 +30,7 @@ export default function SettingsScreen({
 }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const topInset = insets.top + CONTENT_TOP_PADDING;
+  const topInset = insets.top + layout.contentTopPadding;
   const navBottom = insets.bottom + NAV_BOTTOM_PADDING;
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
@@ -81,43 +79,51 @@ export default function SettingsScreen({
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: topInset, paddingBottom: insets.bottom + 96 },
+          {
+            paddingTop: topInset,
+            paddingBottom: Math.max(
+              insets.bottom + NAV_BOTTOM_PADDING + NAV_HEIGHT + 16,
+              layout.screenPaddingBottom,
+            ),
+          },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-          <Text style={styles.title}>Settings</Text>
-          {/* Balances the back button so the title stays visually centered. */}
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.content}>
-          <ChipSection
-            label="I speak"
-            options={SPEAK_LANGUAGES}
-            selected={speaks}
-            onSelect={handleSpeaksSelect}
-            disabledOptions={learning ? [learning] : []}
-          />
-          <ChipSection
-            label="I want to learn"
-            options={LEARN_LANGUAGES}
-            selected={learning}
-            onSelect={handleLearningSelect}
-            disabledOptions={speaks ? [speaks] : []}
-          />
-          <ChipSection
-            label="My level"
-            options={LEVELS}
-            selected={level}
-            onSelect={handleLevelSelect}
-          />
-          <ChipSection
-            label="New words per day"
-            options={WORDS_PER_DAY}
-            selected={wordsPerDay}
-            onSelect={handleWordsPerDaySelect}
-          />
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+            <Text style={styles.title}>Settings</Text>
+            {/* Balances the back button so the title stays visually centered. */}
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.content}>
+            <ChipSection
+              label="I speak"
+              options={SPEAK_LANGUAGES}
+              selected={speaks}
+              onSelect={handleSpeaksSelect}
+              disabledOptions={learning ? [learning] : []}
+            />
+            <ChipSection
+              label="I want to learn"
+              options={LEARN_LANGUAGES}
+              selected={learning}
+              onSelect={handleLearningSelect}
+              disabledOptions={speaks ? [speaks] : []}
+            />
+            <ChipSection
+              label="My level"
+              options={LEVELS}
+              selected={level}
+              onSelect={handleLevelSelect}
+            />
+            <ChipSection
+              label="New words per day"
+              options={WORDS_PER_DAY}
+              selected={wordsPerDay}
+              onSelect={handleWordsPerDaySelect}
+            />
+          </View>
         </View>
       </ScrollView>
       <TopGradient height={topInset} />
@@ -138,12 +144,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    alignItems: 'center',
+    flexGrow: 1,
+    paddingHorizontal: layout.screenPaddingX,
+  },
+  container: {
+    flexGrow: 1,
     gap: 24,
-    paddingHorizontal: 16,
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
+    height: 48,
     justifyContent: 'space-between',
     width: '100%',
   },
@@ -157,5 +171,6 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 24,
+    width: '100%',
   },
 });

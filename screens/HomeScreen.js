@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
-import { colors, typography } from '../theme';
+import { colors, layout, typography } from '../theme';
 
 function levelCompletedCopy(levelCompleted, currentLevel) {
   if (levelCompleted == null) {
@@ -43,7 +43,12 @@ export default function HomeScreen({
     <View
       style={[
         styles.screen,
-        { paddingTop: insets.top + 19, paddingBottom: insets.bottom + 80 },
+        {
+          paddingTop: insets.top + layout.contentTopPadding,
+          // Clears the fixed bottom nav (64) + its 16px offset above the
+          // home indicator.
+          paddingBottom: insets.bottom + 80,
+        },
       ]}
     >
       <View style={styles.content}>
@@ -66,15 +71,18 @@ export default function HomeScreen({
 
 const styles = StyleSheet.create({
   screen: {
+    alignItems: 'center',
     backgroundColor: colors.surface,
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: layout.screenPaddingX,
   },
   content: {
     alignItems: 'center',
     flex: 1,
     gap: 24,
+    maxWidth: layout.maxContentWidth,
     paddingTop: 137,
+    width: '100%',
   },
   title: {
     ...typography.h1,

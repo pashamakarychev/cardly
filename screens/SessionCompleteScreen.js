@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import MetricCard from '../components/MetricCard';
 import { CheckIcon } from '../components/icons/CheckIcon';
-import { colors, typography } from '../theme';
+import { colors, layout, typography } from '../theme';
 
 export default function SessionCompleteScreen({
   newWords = 10,
@@ -17,36 +17,48 @@ export default function SessionCompleteScreen({
     <View
       style={[
         styles.screen,
-        { paddingTop: insets.top + 19, paddingBottom: insets.bottom + 16 },
+        {
+          paddingTop: insets.top + layout.contentTopPadding,
+          paddingBottom: Math.max(insets.bottom, layout.screenPaddingBottom),
+        },
       ]}
     >
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <CheckIcon size={48} color={colors.primary} />
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <CheckIcon size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.title}>Session complete!</Text>
+          <View style={styles.metrics}>
+            <MetricCard value={String(newWords)} label="New Words" />
+            <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
+          </View>
         </View>
-        <Text style={styles.title}>Session complete!</Text>
-        <View style={styles.metrics}>
-          <MetricCard value={String(newWords)} label="New Words" />
-          <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
-        </View>
+        <Button title="Home" onPress={onHome} />
       </View>
-      <Button title="Home" onPress={onHome} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
+    alignItems: 'center',
     backgroundColor: colors.surface,
     flex: 1,
-    gap: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: layout.screenPaddingX,
+  },
+  container: {
+    flex: 1,
+    gap: 10,
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
   content: {
     alignItems: 'center',
     flex: 1,
     gap: 24,
     justifyContent: 'center',
+    width: '100%',
   },
   iconContainer: {
     backgroundColor: colors.background,
