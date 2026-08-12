@@ -152,8 +152,8 @@ export default function SettingsScreen({
         )}
       </ScrollView>
 
-      {/* Fill over the safe area + fade across the fixed back / header. */}
-      <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
+      {/* Solid fill over the safe area, then fade across the header band. */}
+      <TopGradient fillHeight={insets.top} />
       <View
         pointerEvents="box-none"
         style={[
@@ -173,6 +173,7 @@ export default function SettingsScreen({
         )}
       </View>
 
+      {/* Fade across the nav; fill covers the bottom safe zone under it. */}
       <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
       <Dialog
         visible={languageDialog != null}

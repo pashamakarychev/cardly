@@ -1,9 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
+import TopGradient from '../components/TopGradient';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
@@ -42,7 +44,7 @@ export default function HomeScreen({
   const dialog = levelCompletedCopy(levelCompleted, currentLevel);
 
   // Nav sits 50px from the bottom on tablet (Figma) and insets+16 on phone;
-  // keep content clear of the 64px bar.
+  // keep content clear of the 64px bar. Fill under the nav covers the safe zone.
   const navBottom = isTablet
     ? Math.max(insets.bottom, layout.screenPaddingBottom)
     : insets.bottom + 16;
@@ -61,20 +63,24 @@ export default function HomeScreen({
       };
 
   return (
-    <View style={[styles.screen, screenPadding]}>
-      <View
-        style={[
-          styles.content,
-          isTablet ? styles.contentTablet : styles.contentPhone,
-        ]}
-      >
-        <Text style={styles.title}>Study Session</Text>
-        <View style={styles.metricsContainer}>
-          <MetricRow label="New Words" value={String(newWords)} />
-          <MetricRow label="Words to Review" value={String(wordsToReview)} />
+    <View style={styles.screen}>
+      <View style={[styles.body, screenPadding]}>
+        <View
+          style={[
+            styles.content,
+            isTablet ? styles.contentTablet : styles.contentPhone,
+          ]}
+        >
+          <Text style={styles.title}>Study Session</Text>
+          <View style={styles.metricsContainer}>
+            <MetricRow label="New Words" value={String(newWords)} />
+            <MetricRow label="Words to Review" value={String(wordsToReview)} />
+          </View>
+          <Button title="Start" onPress={onStart} disabled={!canStart} />
         </View>
-        <Button title="Start" onPress={onStart} disabled={!canStart} />
       </View>
+      <TopGradient fillHeight={insets.top} />
+      <BottomGradient bottom={navBottom} />
       <Dialog
         visible={dialog != null}
         title={dialog?.title ?? ''}
@@ -87,8 +93,11 @@ export default function HomeScreen({
 
 const styles = StyleSheet.create({
   screen: {
-    alignItems: 'center',
     backgroundColor: colors.surface,
+    flex: 1,
+  },
+  body: {
+    alignItems: 'center',
     flex: 1,
   },
   content: {

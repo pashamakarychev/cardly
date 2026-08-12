@@ -10,6 +10,10 @@ export const layout = {
   screenPaddingBottom: 50,
   contentTopPadding: 19,
 
+  // Figma Top/Bottom Gradient fade bands (fill covers the safe-area insets).
+  topGradientFade: 48,
+  bottomGradientFade: 64,
+
   // Wider than this uses the tablet compositions.
   tabletBreakpoint: 768,
   tabletScreenPadding: 40,

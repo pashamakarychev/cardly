@@ -14,9 +14,7 @@ import { colors, layout, typography } from '../theme';
 
 // Continue button geometry (matches Button + footer placement).
 const CONTINUE_HEIGHT = 60;
-// Figma Top/Bottom Gradient fade bands.
 const HEADER_HEIGHT = 48;
-const BOTTOM_FADE_HEIGHT = 64;
 const HEADER_CONTENT_GAP = 24;
 
 export default function OnboardingScreen({ onContinue }) {
@@ -68,12 +66,14 @@ export default function OnboardingScreen({ onContinue }) {
     }
   };
 
+  // Content inset below the status bar (header sits here on phone).
   const topInset = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
+  // Fill under Continue must cover the full bottom safe zone.
   const continueBottom = isTablet
     ? Math.max(insets.bottom, layout.tabletScreenPadding)
-    : layout.screenPaddingBottom;
+    : Math.max(insets.bottom, layout.screenPaddingBottom);
   const paddingHorizontal = isTablet
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
@@ -142,8 +142,8 @@ export default function OnboardingScreen({ onContinue }) {
         </View>
       </ScrollView>
 
-      {/* Fill over the safe area + fade below (header zone on phone). */}
-      <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
+      {/* Solid fill over the safe area, then fade across the header band. */}
+      <TopGradient fillHeight={insets.top} />
       {!isTablet && (
         <View
           pointerEvents="box-none"
@@ -156,7 +156,7 @@ export default function OnboardingScreen({ onContinue }) {
         </View>
       )}
 
-      <BottomGradient bottom={continueBottom} height={BOTTOM_FADE_HEIGHT} />
+      <BottomGradient bottom={continueBottom} />
       <View
         style={[
           styles.footer,

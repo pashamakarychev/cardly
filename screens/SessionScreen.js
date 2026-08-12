@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import CardStack from '../components/CardStack';
 import IconButton from '../components/IconButton';
 import ProgressBar from '../components/ProgressBar';
+import TopGradient from '../components/TopGradient';
 import { XIcon } from '../components/icons/XIcon';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout } from '../theme';
@@ -182,57 +184,64 @@ export default function SessionScreen({
   );
 
   return (
-    <View style={[styles.screen, screenPadding]}>
-      {isTablet ? (
-        <>
-          {/* Tablet: header spans the full padded width; card/buttons center below. */}
-          {header}
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.tabletScrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View
-              style={[
-                styles.tabletContent,
-                { minHeight: tabletContentMinHeight },
-              ]}
+    <View style={styles.screen}>
+      <View style={[styles.body, screenPadding]}>
+        {isTablet ? (
+          <>
+            {/* Tablet: header spans the full padded width; card/buttons center below. */}
+            {header}
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.tabletScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
             >
-              {cardStack}
-              {buttons}
-            </View>
-          </ScrollView>
-        </>
-      ) : (
-        <View style={styles.phoneContainer}>
-          {header}
-          {/* Scroll when card + answers exceed the viewport (e.g. landscape). */}
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.phoneScrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
-            <View style={styles.spacer} />
-            <View style={styles.content}>
-              {cardStack}
-              {buttons}
-            </View>
-          </ScrollView>
-        </View>
-      )}
+              <View
+                style={[
+                  styles.tabletContent,
+                  { minHeight: tabletContentMinHeight },
+                ]}
+              >
+                {cardStack}
+                {buttons}
+              </View>
+            </ScrollView>
+          </>
+        ) : (
+          <View style={styles.phoneContainer}>
+            {header}
+            {/* Scroll when card + answers exceed the viewport (e.g. landscape). */}
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.phoneScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
+              <View style={styles.spacer} />
+              <View style={styles.content}>
+                {cardStack}
+                {buttons}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+      </View>
+      <TopGradient fillHeight={insets.top} />
+      <BottomGradient bottom={screenPadding.paddingBottom} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    alignItems: 'center',
     backgroundColor: colors.surface,
+    flex: 1,
+  },
+  body: {
+    alignItems: 'center',
     flex: 1,
   },
   phoneContainer: {

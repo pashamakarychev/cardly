@@ -1,11 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import MetricCard from '../components/MetricCard';
+import TopGradient from '../components/TopGradient';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
+
+const HOME_BUTTON_HEIGHT = 60;
 
 export default function SessionCompleteScreen({
   newWords = 10,
@@ -15,21 +19,29 @@ export default function SessionCompleteScreen({
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
 
-  const screenPadding = isTablet
-    ? {
-        paddingTop: Math.max(insets.top, layout.tabletScreenPadding),
-        paddingBottom: Math.max(insets.bottom, layout.tabletScreenPadding),
-        paddingHorizontal: layout.tabletScreenPadding,
-      }
-    : {
-        paddingTop: insets.top + layout.contentTopPadding,
-        paddingBottom: Math.max(insets.bottom, layout.screenPaddingBottom),
-        paddingHorizontal: layout.screenPaddingX,
-      };
+  // Fill under Home must cover the full bottom safe zone.
+  const homeBottom = isTablet
+    ? Math.max(insets.bottom, layout.tabletScreenPadding)
+    : Math.max(insets.bottom, layout.screenPaddingBottom);
+  const paddingHorizontal = isTablet
+    ? layout.tabletScreenPadding
+    : layout.screenPaddingX;
+  const paddingTop = isTablet
+    ? Math.max(insets.top, layout.tabletScreenPadding)
+    : insets.top + layout.contentTopPadding;
 
   return (
-    <View style={[styles.screen, screenPadding]}>
-      <View style={styles.container}>
+    <View style={styles.screen}>
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop,
+            paddingHorizontal,
+            paddingBottom: HOME_BUTTON_HEIGHT + homeBottom,
+          },
+        ]}
+      >
         <View style={styles.content}>
           <View style={styles.iconContainer}>
             <CheckIcon size={48} color={colors.primary} />
@@ -40,8 +52,16 @@ export default function SessionCompleteScreen({
             <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
           </View>
         </View>
-        {/* Pins Home to the bottom of the max-width column (Figma absolute bottom-0). */}
-        <View style={styles.footer}>
+      </View>
+      <TopGradient fillHeight={insets.top} />
+      <BottomGradient bottom={homeBottom} />
+      <View
+        style={[
+          styles.footer,
+          { bottom: homeBottom, paddingHorizontal },
+        ]}
+      >
+        <View style={styles.footerInner}>
           <Button title="Home" onPress={onHome} />
         </View>
       </View>
@@ -51,28 +71,31 @@ export default function SessionCompleteScreen({
 
 const styles = StyleSheet.create({
   screen: {
-    alignItems: 'center',
     backgroundColor: colors.surface,
     flex: 1,
   },
   container: {
+    alignItems: 'center',
     flex: 1,
-    gap: 10,
-    maxWidth: layout.maxContentWidth,
-    width: '100%',
   },
   content: {
     alignItems: 'center',
     flex: 1,
     gap: 24,
     justifyContent: 'center',
+    maxWidth: layout.maxContentWidth,
     width: '100%',
   },
   footer: {
-    bottom: 0,
     left: 0,
     position: 'absolute',
     right: 0,
+    zIndex: 1,
+  },
+  footerInner: {
+    alignSelf: 'center',
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
   iconContainer: {
     backgroundColor: colors.background,

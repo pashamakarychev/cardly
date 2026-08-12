@@ -1,37 +1,21 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
-// Figma "Top Gradient" (mobile): a semi-transparent fill over the status /
-// safe-area band, then a 48px fade across the fixed header so scrolled
-// content softens underneath.
+import { layout } from '../theme';
+
+// Figma "Top Gradient": solid fill over the status / safe-area band, then a
+// fade so scrolled content softens underneath the header.
 // Matches Gray 100 (#F0EFF6) at 75% opacity from the design.
 const SURFACE_FADE = 'rgba(240, 239, 246, 0.75)';
 
 /**
- * @param {number} [fillHeight] Solid fade fill for the top inset (mobile).
- * @param {number} [fadeHeight=48] Gradient below the fill (header fade zone).
- * @param {number} [height] Legacy single-fade height (tablet / older callers).
+ * @param {number} fillHeight Safe-area top inset — solid fill must cover it fully.
+ * @param {number} [fadeHeight] Gradient below the fill (Figma header fade = 48).
  */
 export default function TopGradient({
-  fillHeight,
-  fadeHeight = 48,
-  height,
+  fillHeight = 0,
+  fadeHeight = layout.topGradientFade,
 }) {
-  // Legacy: one continuous fade over `height` (used on tablet).
-  if (fillHeight == null) {
-    if (height == null || height <= 0) {
-      return null;
-    }
-    return (
-      <LinearGradient
-        pointerEvents="none"
-        colors={[SURFACE_FADE, 'rgba(240, 239, 246, 0)']}
-        locations={[0, 1]}
-        style={[styles.overlay, { height }]}
-      />
-    );
-  }
-
   if (fillHeight <= 0 && fadeHeight <= 0) {
     return null;
   }
