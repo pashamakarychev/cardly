@@ -29,13 +29,8 @@ export default function SessionCompleteScreen({
 
   return (
     <View style={[styles.screen, screenPadding]}>
-      <View
-        style={[
-          styles.container,
-          isTablet ? styles.containerTablet : null,
-        ]}
-      >
-        <View style={[styles.content, isTablet ? null : styles.contentPhone]}>
+      <View style={styles.container}>
+        <View style={styles.content}>
           <View style={styles.iconContainer}>
             <CheckIcon size={48} color={colors.primary} />
           </View>
@@ -45,13 +40,10 @@ export default function SessionCompleteScreen({
             <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
           </View>
         </View>
-        {isTablet ? (
-          <View style={styles.footerTablet}>
-            <Button title="Home" onPress={onHome} />
-          </View>
-        ) : (
+        {/* Pins Home to the bottom of the max-width column (Figma absolute bottom-0). */}
+        <View style={styles.footer}>
           <Button title="Home" onPress={onHome} />
-        )}
+        </View>
       </View>
     </View>
   );
@@ -69,22 +61,14 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
-  containerTablet: {
-    justifyContent: 'center',
-    paddingBottom: layout.tabletContentPaddingBottom,
-    paddingTop: layout.tabletContentPaddingTop,
-  },
   content: {
     alignItems: 'center',
+    flex: 1,
     gap: 24,
+    justifyContent: 'center',
     width: '100%',
   },
-  contentPhone: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  footerTablet: {
-    // Pins Home to the bottom of the max-width column (Figma absolute bottom-0).
+  footer: {
     bottom: 0,
     left: 0,
     position: 'absolute',

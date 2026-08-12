@@ -14,9 +14,10 @@ import { colors, layout, typography } from '../theme';
 
 // Continue button geometry (matches Button + footer placement).
 const CONTINUE_HEIGHT = 60;
-// Figma Top/Bottom Gradient fade bands (mobile).
+// Figma Top/Bottom Gradient fade bands.
 const HEADER_HEIGHT = 48;
 const BOTTOM_FADE_HEIGHT = 64;
+const HEADER_CONTENT_GAP = 24;
 
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
@@ -77,10 +78,10 @@ export default function OnboardingScreen({ onContinue }) {
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
 
-  // Mobile: content clears the fixed title (48) + 24 gap under the top inset.
+  // Phone: clears the fixed title. Tablet: title lives in the centered column.
   const scrollPaddingTop = isTablet
     ? topInset
-    : topInset + HEADER_HEIGHT + 24;
+    : topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
 
   const chipSections = (
     <View style={styles.content}>
@@ -141,28 +142,21 @@ export default function OnboardingScreen({ onContinue }) {
         </View>
       </ScrollView>
 
-      {isTablet ? (
-        <TopGradient height={topInset} />
-      ) : (
-        <>
-          {/* Fill over the safe area + fade across the fixed title. */}
-          <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
-          <View
-            pointerEvents="box-none"
-            style={[
-              styles.fixedHeader,
-              { top: topInset, paddingHorizontal },
-            ]}
-          >
-            <Text style={styles.title}>Let's get started</Text>
-          </View>
-        </>
+      {/* Fill over the safe area + fade below (header zone on phone). */}
+      <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
+      {!isTablet && (
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.fixedHeader,
+            { top: topInset, paddingHorizontal },
+          ]}
+        >
+          <Text style={styles.title}>Let's get started</Text>
+        </View>
       )}
 
-      <BottomGradient
-        bottom={continueBottom}
-        height={isTablet ? CONTINUE_HEIGHT : BOTTOM_FADE_HEIGHT}
-      />
+      <BottomGradient bottom={continueBottom} height={BOTTOM_FADE_HEIGHT} />
       <View
         style={[
           styles.footer,
@@ -198,12 +192,10 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
+  // Tablet: title + chips vertically centered; Continue stays pinned below.
   containerTablet: {
-    // Vertically centers the form when it fits; still scrolls when it doesn't.
     flexGrow: 1,
     justifyContent: 'center',
-    paddingBottom: layout.tabletContentPaddingBottom,
-    paddingTop: layout.tabletContentPaddingTop,
   },
   fixedHeader: {
     height: HEADER_HEIGHT,

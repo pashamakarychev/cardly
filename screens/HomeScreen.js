@@ -103,8 +103,6 @@ const styles = StyleSheet.create({
   },
   contentTablet: {
     justifyContent: 'center',
-    paddingBottom: layout.tabletContentPaddingBottom,
-    paddingTop: layout.tabletContentPaddingTop,
   },
   title: {
     ...typography.h1,

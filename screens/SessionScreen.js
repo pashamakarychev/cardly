@@ -136,8 +136,7 @@ export default function SessionScreen({
         screenPadding.paddingTop -
         screenPadding.paddingBottom -
         HEADER_HEIGHT -
-        layout.tabletSessionPaddingTop -
-        layout.tabletContentPaddingBottom,
+        layout.tabletSessionPaddingTop,
     ),
   );
 
@@ -252,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexGrow: 1,
     justifyContent: 'center',
-    paddingBottom: layout.tabletContentPaddingBottom,
+    // Figma tablet session container: pt-[24px] only (no bottom padding).
     paddingTop: layout.tabletSessionPaddingTop,
   },
   // minHeight is set inline from TABLET_CONTENT_MIN_HEIGHT (capped by viewport).

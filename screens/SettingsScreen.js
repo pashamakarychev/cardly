@@ -24,6 +24,8 @@ import { colors, layout, typography } from '../theme';
 const NAV_BOTTOM_PADDING = 16;
 const NAV_HEIGHT = 64;
 const HEADER_HEIGHT = 48;
+// Gap between the fixed back row and the content column (Figma gap-[24px]).
+const HEADER_CONTENT_GAP = 24;
 
 export default function SettingsScreen({
   preferences,
@@ -84,8 +86,8 @@ export default function SettingsScreen({
     await updateSettings(db, { newWordsPerDay: value });
   };
 
-  // Content clears the fixed header (48) + 24 gap under the top inset.
-  const scrollPaddingTop = topInset + HEADER_HEIGHT + 24;
+  // Clears the fixed back / header row + gap under the top inset.
+  const scrollPaddingTop = topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
 
   const chipSections = (
     <View style={styles.content}>
@@ -150,39 +152,26 @@ export default function SettingsScreen({
         )}
       </ScrollView>
 
-      {isTablet ? (
-        <>
-          <TopGradient height={topInset} />
-          <View
-            pointerEvents="box-none"
-            style={[
-              styles.fixedHeader,
-              { top: topInset, paddingHorizontal },
-            ]}
-          >
+      {/* Fill over the safe area + fade across the fixed back / header. */}
+      <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.fixedHeader,
+          { top: topInset, paddingHorizontal },
+        ]}
+      >
+        {isTablet ? (
+          <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+        ) : (
+          <View style={styles.header}>
             <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+            <Text style={styles.title}>Settings</Text>
+            {/* Balances the back button so the title stays visually centered. */}
+            <View style={styles.headerSpacer} />
           </View>
-        </>
-      ) : (
-        <>
-          {/* Fill over the safe area + fade across the fixed header. */}
-          <TopGradient fillHeight={topInset} fadeHeight={HEADER_HEIGHT} />
-          <View
-            pointerEvents="box-none"
-            style={[
-              styles.fixedHeader,
-              { top: topInset, paddingHorizontal },
-            ]}
-          >
-            <View style={styles.header}>
-              <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-              <Text style={styles.title}>Settings</Text>
-              {/* Balances the back button so the title stays visually centered. */}
-              <View style={styles.headerSpacer} />
-            </View>
-          </View>
-        </>
-      )}
+        )}
+      </View>
 
       <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
       <Dialog
@@ -211,13 +200,12 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
+  // Tablet: title + chips vertically centered in the space below the back row.
   tabletContainer: {
     flexGrow: 1,
     gap: 24,
     justifyContent: 'center',
     maxWidth: layout.maxContentWidth,
-    paddingBottom: layout.tabletContentPaddingBottom,
-    paddingTop: layout.tabletContentPaddingTop,
     width: '100%',
   },
   tabletTitleRow: {
