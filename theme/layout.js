@@ -15,4 +15,6 @@ export const layout = {
   tabletScreenPadding: 40,
   tabletContentPaddingTop: 48,
   tabletContentPaddingBottom: 64,
+  // Session (Exercise / New Word) tablet body under the fixed header.
+  tabletSessionPaddingTop: 24,
 };

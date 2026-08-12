@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../components/Button';
@@ -136,6 +136,7 @@ export default function SessionScreen({
         screenPadding.paddingTop -
         screenPadding.paddingBottom -
         HEADER_HEIGHT -
+        layout.tabletSessionPaddingTop -
         layout.tabletContentPaddingBottom,
     ),
   );
@@ -187,7 +188,13 @@ export default function SessionScreen({
         <>
           {/* Tablet: header spans the full padded width; card/buttons center below. */}
           {header}
-          <View style={styles.tabletBody}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.tabletScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <View
               style={[
                 styles.tabletContent,
@@ -197,17 +204,26 @@ export default function SessionScreen({
               {cardStack}
               {buttons}
             </View>
-          </View>
+          </ScrollView>
         </>
       ) : (
         <View style={styles.phoneContainer}>
           {header}
-          {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
-          <View style={styles.spacer} />
-          <View style={styles.content}>
-            {cardStack}
-            {buttons}
-          </View>
+          {/* Scroll when card + answers exceed the viewport (e.g. landscape). */}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.phoneScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
+            <View style={styles.spacer} />
+            <View style={styles.content}>
+              {cardStack}
+              {buttons}
+            </View>
+          </ScrollView>
         </View>
       )}
     </View>
@@ -225,17 +241,24 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
-  tabletBody: {
-    alignItems: 'center',
+  scroll: {
     flex: 1,
-    justifyContent: 'center',
-    maxWidth: layout.maxContentWidth,
-    paddingBottom: layout.tabletContentPaddingBottom,
     width: '100%',
+  },
+  phoneScrollContent: {
+    flexGrow: 1,
+  },
+  tabletScrollContent: {
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingBottom: layout.tabletContentPaddingBottom,
+    paddingTop: layout.tabletSessionPaddingTop,
   },
   // minHeight is set inline from TABLET_CONTENT_MIN_HEIGHT (capped by viewport).
   tabletContent: {
     gap: 24,
+    maxWidth: layout.maxContentWidth,
     width: '100%',
   },
   header: {
