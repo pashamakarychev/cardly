@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import CardStack from '../components/CardStack';
 import IconButton from '../components/IconButton';
@@ -117,17 +116,18 @@ export default function SessionScreen({
     return undefined;
   };
 
-  const screenPadding = isTablet
-    ? {
-        paddingTop: Math.max(insets.top, layout.tabletScreenPadding),
-        paddingBottom: Math.max(insets.bottom, layout.tabletScreenPadding),
-        paddingHorizontal: layout.tabletScreenPadding,
-      }
-    : {
-        paddingTop: insets.top + layout.contentTopPadding,
-        paddingBottom: Math.max(insets.bottom, layout.screenPaddingBottom),
-        paddingHorizontal: layout.screenPaddingX,
-      };
+  // Header sits below the status bar; scroll content uses the same inset as
+  // padding only — the ScrollView itself is full-bleed so cards can pass
+  // underneath the semi-transparent safe-area / header overlays.
+  const topInset = isTablet
+    ? Math.max(insets.top, layout.tabletScreenPadding)
+    : insets.top + layout.contentTopPadding;
+  const bottomInset = isTablet
+    ? Math.max(insets.bottom, layout.tabletScreenPadding)
+    : Math.max(insets.bottom, layout.screenPaddingBottom);
+  const paddingHorizontal = isTablet
+    ? layout.tabletScreenPadding
+    : layout.screenPaddingX;
 
   // Cap min-height on short viewports (e.g. landscape) so content can still fit.
   const tabletContentMinHeight = Math.min(
@@ -135,8 +135,8 @@ export default function SessionScreen({
     Math.max(
       0,
       windowHeight -
-        screenPadding.paddingTop -
-        screenPadding.paddingBottom -
+        topInset -
+        bottomInset -
         HEADER_HEIGHT -
         layout.tabletSessionPaddingTop,
     ),
@@ -176,61 +176,83 @@ export default function SessionScreen({
     />
   );
 
-  const header = (
-    <View style={styles.header}>
-      <IconButton icon={<XIcon />} onPress={onClose} />
-      <ProgressBar progress={progress} />
-    </View>
-  );
-
   return (
     <View style={styles.screen}>
-      <View style={[styles.body, screenPadding]}>
-        {isTablet ? (
-          <>
-            {/* Tablet: header spans the full padded width; card/buttons center below. */}
-            {header}
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.tabletScrollContent}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View
-                style={[
-                  styles.tabletContent,
-                  { minHeight: tabletContentMinHeight },
-                ]}
-              >
-                {cardStack}
-                {buttons}
-              </View>
-            </ScrollView>
-          </>
-        ) : (
-          <View style={styles.phoneContainer}>
-            {header}
-            {/* Scroll when card + answers exceed the viewport (e.g. landscape). */}
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.phoneScrollContent}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
-              <View style={styles.spacer} />
-              <View style={styles.content}>
-                {cardStack}
-                {buttons}
-              </View>
-            </ScrollView>
+      {isTablet ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.tabletScrollContent,
+            {
+              paddingTop: topInset + HEADER_HEIGHT + layout.tabletSessionPaddingTop,
+              paddingBottom: bottomInset,
+              paddingHorizontal,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View
+            style={[
+              styles.tabletContent,
+              { minHeight: tabletContentMinHeight },
+            ]}
+          >
+            {cardStack}
+            {buttons}
           </View>
-        )}
-      </View>
+        </ScrollView>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.phoneScrollContent,
+            {
+              // Clears the fixed header; content can still scroll under it.
+              paddingTop: topInset + HEADER_HEIGHT,
+              paddingBottom: bottomInset,
+              paddingHorizontal,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.phoneColumn}>
+            {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
+            <View style={styles.spacer} />
+            <View style={styles.content}>
+              {cardStack}
+              {buttons}
+            </View>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* Semi-transparent fill over the safe area + fade across the header. */}
       <TopGradient fillHeight={insets.top} />
-      <BottomGradient bottom={screenPadding.paddingBottom} />
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.fixedHeader,
+          {
+            top: topInset,
+            paddingHorizontal: isTablet ? layout.tabletScreenPadding : 0,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.header,
+            !isTablet && { paddingHorizontal },
+            isTablet && styles.headerTablet,
+          ]}
+        >
+          <IconButton icon={<XIcon />} onPress={onClose} />
+          <ProgressBar progress={progress} />
+        </View>
+      </View>
     </View>
   );
 }
@@ -240,28 +262,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     flex: 1,
   },
-  body: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  phoneContainer: {
-    flex: 1,
-    maxWidth: layout.maxContentWidth,
-    width: '100%',
-  },
   scroll: {
     flex: 1,
-    width: '100%',
   },
   phoneScrollContent: {
     flexGrow: 1,
+  },
+  phoneColumn: {
+    alignSelf: 'center',
+    flexGrow: 1,
+    maxWidth: layout.maxContentWidth,
+    width: '100%',
   },
   tabletScrollContent: {
     alignItems: 'center',
     flexGrow: 1,
     justifyContent: 'center',
-    // Figma tablet session container: pt-[24px] only (no bottom padding).
-    paddingTop: layout.tabletSessionPaddingTop,
   },
   // minHeight is set inline from TABLET_CONTENT_MIN_HEIGHT (capped by viewport).
   tabletContent: {
@@ -269,12 +285,24 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
+  fixedHeader: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 1,
+  },
   header: {
     alignItems: 'center',
+    alignSelf: 'center',
     flexDirection: 'row',
     gap: 8,
     height: HEADER_HEIGHT,
+    maxWidth: layout.maxContentWidth,
     width: '100%',
+  },
+  // Tablet header spans the full padded width (not the 600px content column).
+  headerTablet: {
+    maxWidth: '100%',
   },
   spacer: {
     flexGrow: 1,
