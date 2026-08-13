@@ -142,18 +142,20 @@ export default function OnboardingScreen({ onContinue }) {
         </View>
       </ScrollView>
 
-      {/* Solid fill over the safe area, then fade across the header band. */}
-      <TopGradient fillHeight={insets.top} />
+      {/* Phone only — tablet Onboarding has no top gradient in Figma. */}
       {!isTablet && (
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.fixedHeader,
-            { top: topInset, paddingHorizontal },
-          ]}
-        >
-          <Text style={styles.title}>Let's get started</Text>
-        </View>
+        <>
+          <TopGradient fillHeight={insets.top} />
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.fixedHeader,
+              { top: topInset, paddingHorizontal },
+            ]}
+          >
+            <Text style={styles.title}>Let's get started</Text>
+          </View>
+        </>
       )}
 
       <BottomGradient bottom={continueBottom} />

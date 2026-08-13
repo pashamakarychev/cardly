@@ -5,7 +5,6 @@ import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
-import TopGradient from '../components/TopGradient';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
@@ -79,7 +78,6 @@ export default function HomeScreen({
           <Button title="Start" onPress={onStart} disabled={!canStart} />
         </View>
       </View>
-      <TopGradient fillHeight={insets.top} />
       <BottomGradient bottom={navBottom} />
       <Dialog
         visible={dialog != null}

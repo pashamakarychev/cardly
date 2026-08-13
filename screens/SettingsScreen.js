@@ -152,8 +152,8 @@ export default function SettingsScreen({
         )}
       </ScrollView>
 
-      {/* Solid fill over the safe area, then fade across the header band. */}
-      <TopGradient fillHeight={insets.top} />
+      {/* Phone only — tablet Settings has no top gradient in Figma. */}
+      {!isTablet && <TopGradient fillHeight={insets.top} />}
       <View
         pointerEvents="box-none"
         style={[

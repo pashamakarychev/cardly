@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import MetricCard from '../components/MetricCard';
-import TopGradient from '../components/TopGradient';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
@@ -53,7 +52,6 @@ export default function SessionCompleteScreen({
           </View>
         </View>
       </View>
-      <TopGradient fillHeight={insets.top} />
       <BottomGradient bottom={homeBottom} />
       <View
         style={[
