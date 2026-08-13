@@ -33,7 +33,7 @@ export default function SessionCompleteScreen({
     <View style={styles.screen}>
       <View
         style={[
-          styles.container,
+          styles.content,
           {
             paddingTop,
             paddingHorizontal,
@@ -41,27 +41,18 @@ export default function SessionCompleteScreen({
           },
         ]}
       >
-        <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <CheckIcon size={48} color={colors.primary} />
-          </View>
-          <Text style={styles.title}>Session complete!</Text>
-          <View style={styles.metrics}>
-            <MetricCard value={String(newWords)} label="New Words" />
-            <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
-          </View>
+        <View style={styles.iconContainer}>
+          <CheckIcon size={48} color={colors.primary} />
+        </View>
+        <Text style={styles.title}>Session complete!</Text>
+        <View style={styles.metrics}>
+          <MetricCard value={String(newWords)} label="New Words" />
+          <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
         </View>
       </View>
       <BottomGradient bottom={homeBottom} />
-      <View
-        style={[
-          styles.footer,
-          { bottom: homeBottom, paddingHorizontal },
-        ]}
-      >
-        <View style={styles.footerInner}>
-          <Button title="Home" onPress={onHome} />
-        </View>
+      <View style={[styles.footer, { bottom: homeBottom, paddingHorizontal }]}>
+        <Button title="Home" onPress={onHome} style={styles.footerButton} />
       </View>
     </View>
   );
@@ -72,12 +63,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     flex: 1,
   },
-  container: {
-    alignItems: 'center',
-    flex: 1,
-  },
   content: {
     alignItems: 'center',
+    alignSelf: 'center',
     flex: 1,
     gap: 24,
     justifyContent: 'center',
@@ -85,13 +73,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   footer: {
+    alignItems: 'center',
     left: 0,
     position: 'absolute',
     right: 0,
     zIndex: 1,
   },
-  footerInner: {
-    alignSelf: 'center',
+  footerButton: {
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },

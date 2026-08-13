@@ -116,9 +116,8 @@ export default function SessionScreen({
     return undefined;
   };
 
-  // Header sits below the status bar; scroll content uses the same inset as
-  // padding only — the ScrollView itself is full-bleed so cards can pass
-  // underneath the semi-transparent safe-area / header overlays.
+  // Header sits below the status bar; scroll padding clears it, but the
+  // ScrollView is full-bleed so content can pass under the overlays.
   const topInset = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
@@ -167,91 +166,55 @@ export default function SessionScreen({
     </View>
   );
 
-  const cardStack = (
-    <CardStack
-      word={word}
-      nextWord={nextWord}
-      transitionTrigger={transitionTrigger}
-      onTransitionEnd={handleTransitionEnd}
-    />
-  );
-
   return (
     <View style={styles.screen}>
-      {isTablet ? (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.tabletScrollContent,
-            {
-              paddingTop: topInset + HEADER_HEIGHT + layout.tabletSessionPaddingTop,
-              paddingBottom: bottomInset,
-              paddingHorizontal,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View
-            style={[
-              styles.tabletContent,
-              { minHeight: tabletContentMinHeight },
-            ]}
-          >
-            {cardStack}
-            {buttons}
-          </View>
-        </ScrollView>
-      ) : (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.phoneScrollContent,
-            {
-              // Clears the fixed header; content can still scroll under it.
-              paddingTop: topInset + HEADER_HEIGHT,
-              paddingBottom: bottomInset,
-              paddingHorizontal,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.phoneColumn}>
-            {/* Absorbs extra height up to 64px so card + buttons stay grouped. */}
-            <View style={styles.spacer} />
-            <View style={styles.content}>
-              {cardStack}
-              {buttons}
-            </View>
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Semi-transparent fill over the safe area + fade across the header. */}
-      <TopGradient fillHeight={insets.top} />
-      <View
-        pointerEvents="box-none"
-        style={[
-          styles.fixedHeader,
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
           {
-            top: topInset,
-            paddingHorizontal: isTablet ? layout.tabletScreenPadding : 0,
+            paddingTop: isTablet
+              ? topInset + HEADER_HEIGHT + layout.tabletSessionPaddingTop
+              : topInset + HEADER_HEIGHT,
+            paddingBottom: bottomInset,
+            paddingHorizontal,
+            justifyContent: isTablet ? 'center' : undefined,
           },
         ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
       >
+        {/* Figma Container: max 600, full width; phone grows so Spacer can flex. */}
         <View
-          style={[
-            styles.header,
-            !isTablet && { paddingHorizontal },
-            isTablet && styles.headerTablet,
-          ]}
+          style={[styles.container, !isTablet && styles.containerPhone]}
         >
-          <IconButton icon={<XIcon />} onPress={onClose} />
-          <ProgressBar progress={progress} />
+          {!isTablet && <View style={styles.spacer} />}
+          <View
+            style={[
+              styles.content,
+              isTablet && { minHeight: tabletContentMinHeight },
+            ]}
+          >
+            <CardStack
+              word={word}
+              nextWord={nextWord}
+              transitionTrigger={transitionTrigger}
+              onTransitionEnd={handleTransitionEnd}
+            />
+            {buttons}
+          </View>
         </View>
+      </ScrollView>
+
+      <TopGradient fillHeight={insets.top} />
+      {/* Figma Header: full padded width on tablet and phone. */}
+      <View
+        pointerEvents="box-none"
+        style={[styles.header, { top: topInset, paddingHorizontal }]}
+      >
+        <IconButton icon={<XIcon />} onPress={onClose} />
+        <ProgressBar progress={progress} />
       </View>
     </View>
   );
@@ -265,54 +228,37 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  phoneScrollContent: {
-    flexGrow: 1,
-  },
-  phoneColumn: {
-    alignSelf: 'center',
-    flexGrow: 1,
-    maxWidth: layout.maxContentWidth,
-    width: '100%',
-  },
-  tabletScrollContent: {
+  // Figma Exercise root: items-center.
+  scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
-    justifyContent: 'center',
   },
-  // minHeight is set inline from TABLET_CONTENT_MIN_HEIGHT (capped by viewport).
-  tabletContent: {
-    gap: 24,
+  container: {
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
-  fixedHeader: {
+  containerPhone: {
+    flexGrow: 1,
+  },
+  content: {
+    gap: 24,
+    width: '100%',
+  },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    height: HEADER_HEIGHT,
     left: 0,
     position: 'absolute',
     right: 0,
     zIndex: 1,
-  },
-  header: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    height: HEADER_HEIGHT,
-    maxWidth: layout.maxContentWidth,
-    width: '100%',
-  },
-  // Tablet header spans the full padded width (not the 600px content column).
-  headerTablet: {
-    maxWidth: '100%',
   },
   spacer: {
     flexGrow: 1,
     flexShrink: 1,
     maxHeight: 64,
     minHeight: 24,
-  },
-  content: {
-    gap: 24,
-    width: '100%',
   },
   buttons: {
     gap: 12,

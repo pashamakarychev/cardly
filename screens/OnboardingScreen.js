@@ -83,37 +83,6 @@ export default function OnboardingScreen({ onContinue }) {
     ? topInset
     : topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
 
-  const chipSections = (
-    <View style={styles.content}>
-      <ChipSection
-        label="I speak"
-        options={SPEAK_LANGUAGES}
-        selected={speaks}
-        onSelect={handleSpeaksSelect}
-        disabledOptions={learning ? [learning] : []}
-      />
-      <ChipSection
-        label="I want to learn"
-        options={LEARN_LANGUAGES}
-        selected={learning}
-        onSelect={handleLearningSelect}
-        disabledOptions={speaks ? [speaks] : []}
-      />
-      <ChipSection
-        label="My level"
-        options={LEVELS}
-        selected={level}
-        onSelect={setLevel}
-      />
-      <ChipSection
-        label="New words per day"
-        options={WORDS_PER_DAY}
-        selected={wordsPerDay}
-        onSelect={setWordsPerDay}
-      />
-    </View>
-  );
-
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -138,7 +107,32 @@ export default function OnboardingScreen({ onContinue }) {
           {isTablet && (
             <Text style={styles.title}>Let's get started</Text>
           )}
-          {chipSections}
+          <ChipSection
+            label="I speak"
+            options={SPEAK_LANGUAGES}
+            selected={speaks}
+            onSelect={handleSpeaksSelect}
+            disabledOptions={learning ? [learning] : []}
+          />
+          <ChipSection
+            label="I want to learn"
+            options={LEARN_LANGUAGES}
+            selected={learning}
+            onSelect={handleLearningSelect}
+            disabledOptions={speaks ? [speaks] : []}
+          />
+          <ChipSection
+            label="My level"
+            options={LEVELS}
+            selected={level}
+            onSelect={setLevel}
+          />
+          <ChipSection
+            label="New words per day"
+            options={WORDS_PER_DAY}
+            selected={wordsPerDay}
+            onSelect={setWordsPerDay}
+          />
         </View>
       </ScrollView>
 
@@ -148,10 +142,7 @@ export default function OnboardingScreen({ onContinue }) {
           <TopGradient fillHeight={insets.top} />
           <View
             pointerEvents="box-none"
-            style={[
-              styles.fixedHeader,
-              { top: topInset, paddingHorizontal },
-            ]}
+            style={[styles.header, { top: topInset, paddingHorizontal }]}
           >
             <Text style={styles.title}>Let's get started</Text>
           </View>
@@ -159,19 +150,13 @@ export default function OnboardingScreen({ onContinue }) {
       )}
 
       <BottomGradient bottom={continueBottom} />
-      <View
-        style={[
-          styles.footer,
-          { bottom: continueBottom, paddingHorizontal },
-        ]}
-      >
-        <View style={styles.footerInner}>
-          <Button
-            title="Continue"
-            disabled={!isComplete || saving}
-            onPress={handleContinue}
-          />
-        </View>
+      <View style={[styles.footer, { bottom: continueBottom, paddingHorizontal }]}>
+        <Button
+          title="Continue"
+          disabled={!isComplete || saving}
+          onPress={handleContinue}
+          style={styles.footerButton}
+        />
       </View>
     </View>
   );
@@ -199,7 +184,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
   },
-  fixedHeader: {
+  header: {
     height: HEADER_HEIGHT,
     justifyContent: 'center',
     left: 0,
@@ -213,17 +198,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
   },
-  content: {
-    gap: 24,
-  },
   footer: {
+    alignItems: 'center',
     left: 0,
     position: 'absolute',
     right: 0,
     zIndex: 1,
   },
-  footerInner: {
-    alignSelf: 'center',
+  footerButton: {
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },

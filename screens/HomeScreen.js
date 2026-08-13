@@ -62,21 +62,19 @@ export default function HomeScreen({
       };
 
   return (
-    <View style={styles.screen}>
-      <View style={[styles.body, screenPadding]}>
-        <View
-          style={[
-            styles.content,
-            isTablet ? styles.contentTablet : styles.contentPhone,
-          ]}
-        >
-          <Text style={styles.title}>Study Session</Text>
-          <View style={styles.metricsContainer}>
-            <MetricRow label="New Words" value={String(newWords)} />
-            <MetricRow label="Words to Review" value={String(wordsToReview)} />
-          </View>
-          <Button title="Start" onPress={onStart} disabled={!canStart} />
+    <View style={[styles.screen, screenPadding]}>
+      <View
+        style={[
+          styles.content,
+          isTablet ? styles.contentTablet : styles.contentPhone,
+        ]}
+      >
+        <Text style={styles.title}>Study Session</Text>
+        <View style={styles.metricsContainer}>
+          <MetricRow label="New Words" value={String(newWords)} />
+          <MetricRow label="Words to Review" value={String(wordsToReview)} />
         </View>
+        <Button title="Start" onPress={onStart} disabled={!canStart} />
       </View>
       <BottomGradient bottom={navBottom} />
       <Dialog
@@ -91,11 +89,8 @@ export default function HomeScreen({
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: colors.surface,
-    flex: 1,
-  },
-  body: {
     alignItems: 'center',
+    backgroundColor: colors.surface,
     flex: 1,
   },
   content: {

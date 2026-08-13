@@ -90,7 +90,7 @@ export default function SettingsScreen({
   const scrollPaddingTop = topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
 
   const chipSections = (
-    <View style={styles.content}>
+    <>
       <ChipSection
         label="I speak"
         options={SPEAK_LANGUAGES}
@@ -117,7 +117,7 @@ export default function SettingsScreen({
         selected={wordsPerDay}
         onSelect={handleWordsPerDaySelect}
       />
-    </View>
+    </>
   );
 
   return (
@@ -139,37 +139,34 @@ export default function SettingsScreen({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {isTablet ? (
-          <View style={styles.tabletContainer}>
+        <View
+          style={[styles.container, isTablet && styles.containerTablet]}
+        >
+          {isTablet && (
             <View style={styles.tabletTitleRow}>
               <Text style={styles.title}>Settings</Text>
               <View style={styles.headerSpacer} />
             </View>
-            {chipSections}
-          </View>
-        ) : (
-          <View style={styles.container}>{chipSections}</View>
-        )}
+          )}
+          {chipSections}
+        </View>
       </ScrollView>
 
       {/* Phone only — tablet Settings has no top gradient in Figma. */}
       {!isTablet && <TopGradient fillHeight={insets.top} />}
       <View
         pointerEvents="box-none"
-        style={[
-          styles.fixedHeader,
-          { top: topInset, paddingHorizontal },
-        ]}
+        style={[styles.header, { top: topInset, paddingHorizontal }]}
       >
         {isTablet ? (
           <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
         ) : (
-          <View style={styles.header}>
+          <>
             <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
             <Text style={styles.title}>Settings</Text>
             {/* Balances the back button so the title stays visually centered. */}
             <View style={styles.headerSpacer} />
-          </View>
+          </>
         )}
       </View>
 
@@ -198,16 +195,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   container: {
+    gap: 24,
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
   // Tablet: title + chips vertically centered in the space below the back row.
-  tabletContainer: {
+  containerTablet: {
     flexGrow: 1,
-    gap: 24,
     justifyContent: 'center',
-    maxWidth: layout.maxContentWidth,
-    width: '100%',
   },
   tabletTitleRow: {
     alignItems: 'center',
@@ -216,18 +211,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
-  fixedHeader: {
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    zIndex: 1,
-  },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
     height: HEADER_HEIGHT,
     justifyContent: 'space-between',
-    width: '100%',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 1,
   },
   headerSpacer: {
     height: HEADER_HEIGHT,
@@ -236,9 +228,5 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h2,
     color: colors.textPrimary,
-  },
-  content: {
-    gap: 24,
-    width: '100%',
   },
 });
