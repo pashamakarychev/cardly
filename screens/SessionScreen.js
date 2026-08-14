@@ -15,6 +15,10 @@ import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 // Figma tablet Content frame height — keeps New Word / Exercise aligned.
 const TABLET_CONTENT_MIN_HEIGHT = 656;
 const HEADER_HEIGHT = 48;
+// Figma Exercise Buttons frame: 4 × 60px buttons + 3 × 12px gaps.
+const BUTTON_HEIGHT = 60;
+const BUTTON_GAP = 12;
+const BUTTONS_HEIGHT = BUTTON_HEIGHT * 4 + BUTTON_GAP * 3;
 
 // Pause after a tap so the button feedback registers before the cards move
 const TRANSITION_DELAY_MS = 300;
@@ -261,7 +265,10 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   buttons: {
-    gap: 12,
+    gap: BUTTON_GAP,
+    // Keep Exercise’s 4-button height for New Word (2 buttons) so the card
+    // doesn’t jump when modes change.
+    height: BUTTONS_HEIGHT,
     width: '100%',
   },
 });
