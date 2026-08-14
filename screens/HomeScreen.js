@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
@@ -7,6 +7,9 @@ import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
+
+// Figma phone Home Content → Spacer.
+const PHONE_SPACER_HEIGHT = 137;
 
 function levelCompletedCopy(levelCompleted, currentLevel) {
   if (levelCompleted == null) {
@@ -48,34 +51,40 @@ export default function HomeScreen({
     ? Math.max(insets.bottom, layout.screenPaddingBottom)
     : insets.bottom + 16;
 
-  const screenPadding = isTablet
-    ? {
-        paddingTop: Math.max(insets.top, layout.tabletScreenPadding),
-        paddingBottom: navBottom + 64,
-        paddingHorizontal: layout.tabletScreenPadding,
-      }
-    : {
-        paddingTop: insets.top + layout.contentTopPadding,
-        // navBottom is insets+16; +64 clears the bar → insets+80 total.
-        paddingBottom: navBottom + 64,
-        paddingHorizontal: layout.screenPaddingX,
-      };
+  const paddingTop = isTablet
+    ? Math.max(insets.top, layout.tabletScreenPadding)
+    : insets.top + layout.contentTopPadding;
+  const paddingBottom = navBottom + 64;
+  const paddingHorizontal = isTablet
+    ? layout.tabletScreenPadding
+    : layout.screenPaddingX;
 
   return (
-    <View style={[styles.screen, screenPadding]}>
-      <View
-        style={[
-          styles.content,
-          isTablet ? styles.contentTablet : styles.contentPhone,
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && styles.scrollContentTablet,
+          {
+            paddingTop,
+            paddingBottom,
+            paddingHorizontal,
+          },
         ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Study Session</Text>
-        <View style={styles.metricsContainer}>
-          <MetricRow label="New Words" value={String(newWords)} />
-          <MetricRow label="Words to Review" value={String(wordsToReview)} />
+        <View style={[styles.content, !isTablet && styles.contentPhone]}>
+          {!isTablet && <View style={styles.spacer} />}
+          <Text style={styles.title}>Study Session</Text>
+          <View style={styles.metricsContainer}>
+            <MetricRow label="New Words" value={String(newWords)} />
+            <MetricRow label="Words to Review" value={String(wordsToReview)} />
+          </View>
+          <Button title="Start" onPress={onStart} disabled={!canStart} />
         </View>
-        <Button title="Start" onPress={onStart} disabled={!canStart} />
-      </View>
+      </ScrollView>
       <BottomGradient bottom={navBottom} />
       <Dialog
         visible={dialog != null}
@@ -89,22 +98,36 @@ export default function HomeScreen({
 
 const styles = StyleSheet.create({
   screen: {
-    alignItems: 'center',
     backgroundColor: colors.surface,
     flex: 1,
   },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: 'center',
+    flexGrow: 1,
+  },
+  scrollContentTablet: {
+    justifyContent: 'center',
+  },
   content: {
     alignItems: 'center',
-    flex: 1,
     gap: 24,
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
+  // Fills the scroll viewport so the spacer can grow/shrink before scrolling.
   contentPhone: {
-    paddingTop: 137,
+    flexGrow: 1,
   },
-  contentTablet: {
-    justifyContent: 'center',
+  spacer: {
+    // Prefer Figma’s 137px; shrink first when the column can’t fit.
+    flexGrow: 1,
+    flexShrink: 1,
+    maxHeight: PHONE_SPACER_HEIGHT,
+    minHeight: 0,
+    width: '100%',
   },
   title: {
     ...typography.h1,
