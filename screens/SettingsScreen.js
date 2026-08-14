@@ -24,7 +24,7 @@ import { colors, layout, typography } from '../theme';
 const NAV_BOTTOM_PADDING = 16;
 const NAV_HEIGHT = 64;
 const HEADER_HEIGHT = 48;
-// Gap between the fixed back row and the content column (Figma gap-[24px]).
+// Gap between the fixed back row and the content column (Figma phone gap-[24px]).
 const HEADER_CONTENT_GAP = 24;
 
 export default function SettingsScreen({
@@ -86,8 +86,11 @@ export default function SettingsScreen({
     await updateSettings(db, { newWordsPerDay: value });
   };
 
-  // Clears the fixed back / header row + gap under the top inset.
-  const scrollPaddingTop = topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
+  // Phone: clears the fixed header + gap. Tablet: Figma centers the column in
+  // the padded screen; the back button is an overlay and does not consume flow.
+  const scrollPaddingTop = isTablet
+    ? topInset
+    : topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
 
   const chipSections = (
     <>
@@ -126,11 +129,12 @@ export default function SettingsScreen({
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
+          isTablet && styles.scrollContentTablet,
           {
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
             paddingBottom: Math.max(
-              navBottom + NAV_HEIGHT + 16,
+              navBottom + NAV_HEIGHT + (isTablet ? 0 : 16),
               isTablet
                 ? layout.tabletScreenPadding
                 : layout.screenPaddingBottom,
@@ -139,15 +143,8 @@ export default function SettingsScreen({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[styles.container, isTablet && styles.containerTablet]}
-        >
-          {isTablet && (
-            <View style={styles.tabletTitleRow}>
-              <Text style={styles.title}>Settings</Text>
-              <View style={styles.headerSpacer} />
-            </View>
-          )}
+        <View style={styles.container}>
+          {isTablet && <Text style={styles.tabletTitle}>Settings</Text>}
           {chipSections}
         </View>
       </ScrollView>
@@ -194,21 +191,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexGrow: 1,
   },
+  // Figma tablet: justify-center p-[40px] — column sits in the middle.
+  scrollContentTablet: {
+    justifyContent: 'center',
+  },
   container: {
     gap: 24,
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
-  // Tablet: title + chips vertically centered in the space below the back row.
-  containerTablet: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  tabletTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: HEADER_HEIGHT,
-    justifyContent: 'space-between',
+  // Figma tablet title is centered in the 600px column (not a back-row pair).
+  tabletTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    textAlign: 'center',
     width: '100%',
   },
   header: {
