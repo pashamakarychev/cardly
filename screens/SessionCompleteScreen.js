@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
@@ -31,25 +31,31 @@ export default function SessionCompleteScreen({
 
   return (
     <View style={styles.screen}>
-      <View
-        style={[
-          styles.content,
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
           {
             paddingTop,
             paddingHorizontal,
+            // Clears the absolutely positioned Home button.
             paddingBottom: HOME_BUTTON_HEIGHT + homeBottom,
           },
         ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.iconContainer}>
-          <CheckIcon size={48} color={colors.primary} />
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <CheckIcon size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.title}>Session complete!</Text>
+          <View style={styles.metrics}>
+            <MetricCard value={String(newWords)} label="New Words" />
+            <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
+          </View>
         </View>
-        <Text style={styles.title}>Session complete!</Text>
-        <View style={styles.metrics}>
-          <MetricCard value={String(newWords)} label="New Words" />
-          <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
-        </View>
-      </View>
+      </ScrollView>
       <BottomGradient bottom={homeBottom} />
       <View style={[styles.footer, { bottom: homeBottom, paddingHorizontal }]}>
         <Button title="Home" onPress={onHome} style={styles.footerButton} />
@@ -63,12 +69,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     flex: 1,
   },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   content: {
     alignItems: 'center',
-    alignSelf: 'center',
-    flex: 1,
     gap: 24,
-    justifyContent: 'center',
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
