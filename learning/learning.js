@@ -678,15 +678,50 @@ export async function getDueLearningWords(db) {
       WHERE lp.language = ?
         AND lp.state = ?
         AND lp.next_review_at IS NOT NULL
-        AND lp.next_review_at < ?
+        AND CAST(lp.next_review_at AS INTEGER) <= ?
         AND aw.word_id IS NULL
-      ORDER BY lp.next_review_at ASC
+      ORDER BY CAST(lp.next_review_at AS INTEGER) ASC
     `,
     language,
     language,
     WORD_STATES.LEARNING,
     Date.now()
   );
+}
+
+/**
+ * Soonest future review time for a LEARNING word not in the active pool.
+ * Used to refresh the Home “Words to Review” counter without polling.
+ */
+export async function getNearestNextReviewAt(db) {
+  const language = await getLearningLanguage(db);
+  if (language == null) {
+    return null;
+  }
+
+  const now = Date.now();
+  const row = await db.getFirstAsync(
+    `
+      SELECT lp.next_review_at AS next_review_at
+      FROM learning_progress lp
+      LEFT JOIN active_words aw
+        ON aw.word_id = lp.word_id AND aw.language = ?
+      WHERE lp.language = ?
+        AND lp.state = ?
+        AND lp.next_review_at IS NOT NULL
+        AND CAST(lp.next_review_at AS INTEGER) > ?
+        AND aw.word_id IS NULL
+      ORDER BY CAST(lp.next_review_at AS INTEGER) ASC
+      LIMIT 1
+    `,
+    language,
+    language,
+    WORD_STATES.LEARNING,
+    now
+  );
+
+  const value = Number(row?.next_review_at);
+  return Number.isFinite(value) ? value : null;
 }
 
 /** Next due LEARNING word, or null if none. */

@@ -12,7 +12,7 @@ import {
 import { createStackNavigator } from '@react-navigation/stack';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,6 +58,7 @@ import {
   forSlideFromRight,
   slideTransitionSpec,
 } from './navigation/transitions';
+import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
 import { useIsTablet } from './hooks/useIsTablet';
 import MainTabsScreen from './screens/MainTabsScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -107,7 +108,7 @@ function AppContent() {
   });
   const [levelCompleted, setLevelCompleted] = useState(null);
 
-  const refreshHomeStats = async () => {
+  const refreshHomeStats = useCallback(async () => {
     const [newWordsRemaining, dueWords, activeCounts, completedSteps] =
       await Promise.all([
         getNewWordsRemainingToday(db),
@@ -121,7 +122,16 @@ function AppContent() {
       activeWords: activeCounts.total,
       completedSteps,
     });
-  };
+  }, [db]);
+
+  useHomeStatsSchedule(db, refreshHomeStats, activeTab === 'home');
+
+  // Leaving Settings (or any non-Home tab) and returning to Home.
+  useEffect(() => {
+    if (activeTab === 'home') {
+      refreshHomeStats();
+    }
+  }, [activeTab, refreshHomeStats]);
 
   const loadLevelCompleted = async () => {
     setLevelCompleted(await getLevelCompleted(db));
@@ -138,7 +148,6 @@ function AppContent() {
           level: settings.level,
           wordsPerDay: String(settings.new_words_per_day),
         });
-        await refreshHomeStats();
         await loadLevelCompleted();
         setActiveTab('home');
         setInitialRoute(MAIN_ROUTE);
@@ -396,7 +405,6 @@ function AppContent() {
         return next;
       });
       clearPendingSession();
-      refreshHomeStats();
       loadLevelCompleted();
       return;
     }
