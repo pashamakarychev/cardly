@@ -46,7 +46,7 @@ export async function countTotalSteps(db) {
   return activeSteps + dueSteps + newWordSteps;
 }
 
-async function getCompletedSteps(db) {
+export async function getCompletedSteps(db) {
   const language = await getLearningLanguage(db);
   if (language == null) {
     return 0;

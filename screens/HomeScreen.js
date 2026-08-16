@@ -39,6 +39,7 @@ export default function HomeScreen({
   newWords = 0,
   wordsToReview = 0,
   canStart = false,
+  canContinue = false,
   currentLevel,
   levelCompleted,
   onLevelCompletedConfirm,
@@ -90,7 +91,7 @@ export default function HomeScreen({
             <MetricRow label="Words to Review" value={String(wordsToReview)} />
           </View>
           <Button
-            title="Start"
+            title={canContinue ? 'Continue' : 'Start'}
             onPress={onStart}
             disabled={!canStart}
           />

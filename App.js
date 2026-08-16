@@ -51,6 +51,7 @@ import {
   onReviewIncorrect,
   resetSessionProgress,
   syncSessionProgress,
+  getCompletedSteps,
 } from './learning/sessionProgress';
 import {
   forSlideFromLeft,
@@ -102,19 +103,23 @@ function AppContent() {
     newWords: 0,
     wordsToReview: 0,
     activeWords: 0,
+    completedSteps: 0,
   });
   const [levelCompleted, setLevelCompleted] = useState(null);
 
   const refreshHomeStats = async () => {
-    const [newWordsRemaining, dueWords, activeCounts] = await Promise.all([
-      getNewWordsRemainingToday(db),
-      getDueLearningWords(db),
-      getActiveWordsCounts(db),
-    ]);
+    const [newWordsRemaining, dueWords, activeCounts, completedSteps] =
+      await Promise.all([
+        getNewWordsRemainingToday(db),
+        getDueLearningWords(db),
+        getActiveWordsCounts(db),
+        getCompletedSteps(db),
+      ]);
     setHomeStats({
       newWords: newWordsRemaining + activeCounts.new,
       wordsToReview: dueWords.length + activeCounts.review,
       activeWords: activeCounts.total,
+      completedSteps,
     });
   };
 
@@ -525,6 +530,7 @@ function AppContent() {
                     homeStats.newWords > 0 ||
                     homeStats.wordsToReview > 0 ||
                     homeStats.activeWords > 0,
+                  canContinue: homeStats.completedSteps > 0,
                   currentLevel: preferences?.level,
                   levelCompleted,
                   onLevelCompletedConfirm: handleLevelCompletedConfirm,
