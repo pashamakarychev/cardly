@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# SQLite sidecar files (WAL mode)
+*.db-shm
+*.db-wal
