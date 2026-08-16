@@ -1,10 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
 
 export default function MetricCard({ value, label }) {
+  const fontScale = useFontScale();
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { minHeight: 96 * fontScale }]}>
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>
     </View>
@@ -18,7 +21,6 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     flex: 1,
     gap: 10,
-    height: 96,
     justifyContent: 'center',
     padding: 16,
   },

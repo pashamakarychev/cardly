@@ -8,6 +8,7 @@ import IconButton from '../components/IconButton';
 import ProgressBar from '../components/ProgressBar';
 import TopGradient from '../components/TopGradient';
 import { XIcon } from '../components/icons/XIcon';
+import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout } from '../theme';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
@@ -46,6 +47,7 @@ export default function SessionScreen({
 }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const fontScale = useFontScale();
   const { height: windowHeight } = useWindowDimensions();
   const [wrongOptions, setWrongOptions] = useState([]);
   const [resolved, setResolved] = useState(false);
@@ -132,6 +134,9 @@ export default function SessionScreen({
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
 
+  const headerHeight = HEADER_HEIGHT * fontScale;
+  const buttonsHeight = BUTTONS_HEIGHT * fontScale;
+
   // Cap min-height on short viewports (e.g. landscape) so content can still fit.
   const tabletContentMinHeight = Math.min(
     TABLET_CONTENT_MIN_HEIGHT,
@@ -140,13 +145,13 @@ export default function SessionScreen({
       windowHeight -
         topInset -
         bottomInset -
-        HEADER_HEIGHT -
+        headerHeight -
         layout.tabletSessionPaddingTop,
     ),
   );
 
   const buttons = (
-    <View style={styles.buttons}>
+    <View style={[styles.buttons, { height: buttonsHeight, gap: BUTTON_GAP * fontScale }]}>
       {mode === SESSION_MODES.EXERCISE ? (
         options.map((option, index) => (
           <Button
@@ -178,8 +183,8 @@ export default function SessionScreen({
           styles.scrollContent,
           {
             paddingTop: isTablet
-              ? topInset + HEADER_HEIGHT + layout.tabletSessionPaddingTop
-              : topInset + HEADER_HEIGHT,
+              ? topInset + headerHeight + layout.tabletSessionPaddingTop
+              : topInset + headerHeight,
             paddingBottom: bottomInset,
             paddingHorizontal,
             justifyContent: isTablet ? 'center' : undefined,
@@ -215,7 +220,10 @@ export default function SessionScreen({
       {/* Figma Header: full padded width on tablet and phone. */}
       <View
         pointerEvents="box-none"
-        style={[styles.header, { top: topInset, paddingHorizontal }]}
+        style={[
+          styles.header,
+          { top: topInset, height: headerHeight, paddingHorizontal },
+        ]}
       >
         <IconButton icon={<XIcon />} onPress={onClose} />
         <ProgressBar progress={progress} />
@@ -252,7 +260,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
-    height: HEADER_HEIGHT,
     left: 0,
     position: 'absolute',
     right: 0,
@@ -265,10 +272,8 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   buttons: {
-    gap: BUTTON_GAP,
-    // Keep Exercise’s 4-button height for New Word (2 buttons) so the card
-    // doesn’t jump when modes change.
-    height: BUTTONS_HEIGHT,
+    // Height + gap set inline from fontScale so New Word (2 buttons) keeps
+    // Exercise’s 4-button frame and the card doesn’t jump when modes change.
     width: '100%',
   },
 });

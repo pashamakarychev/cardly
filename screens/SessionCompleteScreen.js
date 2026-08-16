@@ -5,6 +5,7 @@ import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import MetricCard from '../components/MetricCard';
 import { CheckIcon } from '../components/icons/CheckIcon';
+import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
@@ -17,6 +18,8 @@ export default function SessionCompleteScreen({
 }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const fontScale = useFontScale();
+  const homeButtonHeight = HOME_BUTTON_HEIGHT * fontScale;
 
   // Fill under Home must cover the full bottom safe zone.
   const homeBottom = isTablet
@@ -39,7 +42,7 @@ export default function SessionCompleteScreen({
             paddingTop,
             paddingHorizontal,
             // Clears the absolutely positioned Home button.
-            paddingBottom: HOME_BUTTON_HEIGHT + homeBottom,
+            paddingBottom: homeButtonHeight + homeBottom,
           },
         ]}
         showsVerticalScrollIndicator={false}

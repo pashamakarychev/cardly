@@ -6,6 +6,7 @@ import {
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
 import { HomeFillIcon, HomeIcon } from './icons/HomeIcon';
 import { SettingsFillIcon, SettingsIcon } from './icons/SettingsIcon';
@@ -30,6 +31,9 @@ const TABS = [
 // transition direction from a tab's position.
 export const TAB_KEYS = TABS.map(({ key }) => key);
 
+/** Base nav bar height at fontScale 1; multiply by useFontScale() for layout clearance. */
+export const NAV_HEIGHT = 64;
+
 const useNativeGlass = isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
 
 // Active: rgba(0,0,0,0.05); Pressed: rgba(0,0,0,0.1) — Figma node 19034:319.
@@ -40,6 +44,7 @@ function NavigationItem({
   active,
   onPress,
   onPressedChange,
+  fontScale,
 }) {
   const { showPressed, pressProps } = useDelayedPressed({
     onChange: onPressedChange,
@@ -53,6 +58,12 @@ function NavigationItem({
       {...pressProps}
       style={[
         styles.item,
+        {
+          height: 56 * fontScale,
+          minWidth: 80 * fontScale,
+          paddingHorizontal: 12 * fontScale,
+          paddingVertical: 4 * fontScale,
+        },
         active && styles.itemActive,
         showPressed && styles.itemPressed,
       ]}
@@ -72,6 +83,7 @@ function NavigationItem({
 }
 
 export default function BottomNavigation({ activeTab, onTabPress }) {
+  const fontScale = useFontScale();
   // While another item is pressed, the active item drops to the default look
   // so only one pill is highlighted at a time.
   const [pressedTab, setPressedTab] = useState(null);
@@ -82,6 +94,7 @@ export default function BottomNavigation({ activeTab, onTabPress }) {
       label={label}
       Icon={Icon}
       ActiveIcon={ActiveIcon}
+      fontScale={fontScale}
       // Stay active while this item itself is pressed so release goes
       // pressed → active with no default frame. Only a different pressed
       // item demotes the active one.
@@ -98,15 +111,25 @@ export default function BottomNavigation({ activeTab, onTabPress }) {
     />
   ));
 
+  const containerStyle = [
+    styles.container,
+    {
+      height: NAV_HEIGHT * fontScale,
+      padding: 4 * fontScale,
+    },
+  ];
+
   if (useNativeGlass) {
     return (
-      <GlassView style={styles.container} isInteractive>
+      <GlassView style={containerStyle} isInteractive>
         {items}
       </GlassView>
     );
   }
 
-  return <View style={[styles.container, styles.containerDefault]}>{items}</View>;
+  return (
+    <View style={[containerStyle, styles.containerDefault]}>{items}</View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -116,8 +139,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     flexDirection: 'row',
     gap: 4,
-    height: 64,
-    padding: 4,
   },
   containerDefault: {
     backgroundColor: colors.background,
@@ -126,11 +147,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 999,
     gap: 4,
-    height: 56,
     justifyContent: 'center',
-    minWidth: 80,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
   },
   itemActive: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',

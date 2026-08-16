@@ -5,6 +5,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
+import { NAV_HEIGHT } from '../components/BottomNavigation';
 import ChipSection from '../components/ChipSection';
 import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
@@ -17,12 +18,12 @@ import {
   WORDS_PER_DAY,
 } from '../constants/preferences';
 import { updateSettings } from '../db/settings';
+import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
 // Bottom nav geometry (matches BottomNavigation + App nav overlay).
 const NAV_BOTTOM_PADDING = 16;
-const NAV_HEIGHT = 64;
 const HEADER_HEIGHT = 48;
 // Gap between the fixed back row and the content column (Figma phone gap-[24px]).
 const HEADER_CONTENT_GAP = 24;
@@ -35,6 +36,9 @@ export default function SettingsScreen({
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const fontScale = useFontScale();
+  const headerHeight = HEADER_HEIGHT * fontScale;
+  const navHeight = NAV_HEIGHT * fontScale;
   const topInset = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
@@ -90,7 +94,7 @@ export default function SettingsScreen({
   // the padded screen; the back button is an overlay and does not consume flow.
   const scrollPaddingTop = isTablet
     ? topInset
-    : topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
+    : topInset + headerHeight + HEADER_CONTENT_GAP;
 
   const chipSections = (
     <>
@@ -134,7 +138,7 @@ export default function SettingsScreen({
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
             paddingBottom: Math.max(
-              navBottom + NAV_HEIGHT + (isTablet ? 0 : 16),
+              navBottom + navHeight + (isTablet ? 0 : 16),
               isTablet
                 ? layout.tabletScreenPadding
                 : layout.screenPaddingBottom,
@@ -153,7 +157,10 @@ export default function SettingsScreen({
       {!isTablet && <TopGradient fillHeight={insets.top} />}
       <View
         pointerEvents="box-none"
-        style={[styles.header, { top: topInset, paddingHorizontal }]}
+        style={[
+          styles.header,
+          { top: topInset, height: headerHeight, paddingHorizontal },
+        ]}
       >
         {isTablet ? (
           <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
@@ -162,13 +169,18 @@ export default function SettingsScreen({
             <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
             <Text style={styles.title}>Settings</Text>
             {/* Balances the back button so the title stays visually centered. */}
-            <View style={styles.headerSpacer} />
+            <View
+              style={[
+                styles.headerSpacer,
+                { height: headerHeight, width: headerHeight },
+              ]}
+            />
           </>
         )}
       </View>
 
       {/* Fade across the nav; fill covers the bottom safe zone under it. */}
-      <BottomGradient bottom={navBottom} height={NAV_HEIGHT} />
+      <BottomGradient bottom={navBottom} height={navHeight} />
       <Dialog
         visible={languageDialog != null}
         title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}
@@ -210,17 +222,13 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',
-    height: HEADER_HEIGHT,
     justifyContent: 'space-between',
     left: 0,
     position: 'absolute',
     right: 0,
     zIndex: 1,
   },
-  headerSpacer: {
-    height: HEADER_HEIGHT,
-    width: HEADER_HEIGHT,
-  },
+  headerSpacer: {},
   title: {
     ...typography.h2,
     color: colors.textPrimary,

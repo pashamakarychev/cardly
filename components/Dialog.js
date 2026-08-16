@@ -1,6 +1,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import Button from './Button';
+import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
 
 export default function Dialog({
@@ -10,6 +11,8 @@ export default function Dialog({
   confirmLabel = 'Ok',
   onConfirm,
 }) {
+  const fontScale = useFontScale();
+
   return (
     <Modal
       visible={visible}
@@ -26,7 +29,7 @@ export default function Dialog({
           <Button
             title={confirmLabel}
             onPress={onConfirm}
-            style={styles.button}
+            style={[styles.button, { height: 52 * fontScale }]}
           />
         </Pressable>
       </Pressable>
@@ -65,7 +68,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     width: '100%',
   },
-  button: {
-    height: 52,
-  },
+  button: {},
 });

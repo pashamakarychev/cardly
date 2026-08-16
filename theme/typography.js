@@ -3,6 +3,10 @@
 //
 // All text styles use Inter. Figma line-height is 100%, so lineHeight
 // equals fontSize on iOS. Android needs slightly more room for descenders.
+//
+// Font sizes respect the system Accessibility / Display text size via React
+// Native’s default Text allowFontScaling. Fixed-height text containers
+// (buttons, nav, cards) should multiply their heights by useFontScale().
 
 import { Platform } from 'react-native';
 

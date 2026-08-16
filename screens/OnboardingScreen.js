@@ -9,6 +9,7 @@ import ChipSection from '../components/ChipSection';
 import TopGradient from '../components/TopGradient';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { completeOnboarding } from '../db/settings';
+import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
@@ -21,6 +22,9 @@ export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const fontScale = useFontScale();
+  const headerHeight = HEADER_HEIGHT * fontScale;
+  const continueHeight = CONTINUE_HEIGHT * fontScale;
   const [speaks, setSpeaks] = useState(null);
   const [learning, setLearning] = useState(null);
   const [level, setLevel] = useState(null);
@@ -81,7 +85,7 @@ export default function OnboardingScreen({ onContinue }) {
   // Phone: clears the fixed title. Tablet: title lives in the centered column.
   const scrollPaddingTop = isTablet
     ? topInset
-    : topInset + HEADER_HEIGHT + HEADER_CONTENT_GAP;
+    : topInset + headerHeight + HEADER_CONTENT_GAP;
 
   return (
     <View style={styles.screen}>
@@ -93,7 +97,7 @@ export default function OnboardingScreen({ onContinue }) {
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
             // Clears the absolutely positioned Continue button.
-            paddingBottom: CONTINUE_HEIGHT + continueBottom + 24,
+            paddingBottom: continueHeight + continueBottom + 24,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -142,7 +146,10 @@ export default function OnboardingScreen({ onContinue }) {
           <TopGradient fillHeight={insets.top} />
           <View
             pointerEvents="box-none"
-            style={[styles.header, { top: topInset, paddingHorizontal }]}
+            style={[
+              styles.header,
+              { top: topInset, height: headerHeight, paddingHorizontal },
+            ]}
           >
             <Text style={styles.title}>Let's get started</Text>
           </View>
@@ -185,7 +192,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    height: HEADER_HEIGHT,
     justifyContent: 'center',
     left: 0,
     position: 'absolute',

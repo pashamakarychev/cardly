@@ -2,9 +2,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
+import { NAV_HEIGHT } from '../components/BottomNavigation';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
+import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';
 
@@ -43,10 +45,12 @@ export default function HomeScreen({
 }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const fontScale = useFontScale();
   const dialog = levelCompletedCopy(levelCompleted, currentLevel);
+  const navHeight = NAV_HEIGHT * fontScale;
 
   // Nav sits 50px from the bottom on tablet (Figma) and insets+16 on phone;
-  // keep content clear of the 64px bar. Fill under the nav covers the safe zone.
+  // keep content clear of the scaled nav bar. Fill under the nav covers the safe zone.
   const navBottom = isTablet
     ? Math.max(insets.bottom, layout.screenPaddingBottom)
     : insets.bottom + 16;
@@ -54,7 +58,7 @@ export default function HomeScreen({
   const paddingTop = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
-  const paddingBottom = navBottom + 64;
+  const paddingBottom = navBottom + navHeight;
   const paddingHorizontal = isTablet
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;

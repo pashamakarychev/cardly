@@ -3,7 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from './icons/CheckIcon';
 import { XIcon } from './icons/XIcon';
 import { useDelayedPressed } from './useDelayedPressed';
+import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
+
+const BUTTON_HEIGHT = 60;
 
 // status ('correct' | 'incorrect') shows answer feedback on secondary buttons
 export default function Button({
@@ -14,6 +17,7 @@ export default function Button({
   disabled = false,
   style,
 }) {
+  const fontScale = useFontScale();
   const secondary = variant === 'secondary';
   const showFeedback = status === 'correct' || status === 'incorrect';
   const iconColor =
@@ -29,6 +33,7 @@ export default function Button({
       {...pressProps}
       style={[
         styles.button,
+        { height: BUTTON_HEIGHT * fontScale },
         secondary && styles.buttonSecondary,
         disabled && (secondary ? styles.secondaryDisabled : styles.primaryDisabled),
         !disabled &&
@@ -70,7 +75,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.primary,
     borderRadius: 30,
-    height: 60,
     justifyContent: 'center',
     width: '100%',
   },

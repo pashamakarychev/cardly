@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
 
 export default function Chip({
@@ -8,12 +9,18 @@ export default function Chip({
   disabled = false,
   onPress,
 }) {
+  const fontScale = useFontScale();
+
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={[
         styles.chip,
+        {
+          paddingHorizontal: 16 * fontScale,
+          paddingVertical: 12 * fontScale,
+        },
         disabled && styles.chipDisabled,
         selected && !disabled && styles.chipSelected,
       ]}
@@ -35,8 +42,6 @@ const styles = StyleSheet.create({
   chip: {
     backgroundColor: colors.background,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
   },
   chipSelected: {
     backgroundColor: colors.primary,
