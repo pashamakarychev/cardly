@@ -1,5 +1,6 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
+import AccessibleText from './AccessibleText';
 import Button from './Button';
 import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
@@ -19,20 +20,31 @@ export default function Dialog({
       transparent
       animationType="fade"
       onRequestClose={onConfirm}
+      accessibilityViewIsModal
     >
-      <Pressable style={styles.backdrop} onPress={onConfirm}>
-        <Pressable style={styles.card} onPress={() => {}}>
+      <View style={styles.backdrop}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onConfirm}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss dialog"
+        />
+        <View style={styles.card} accessibilityViewIsModal>
           <View style={styles.message}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.description}>{description}</Text>
+            <AccessibleText style={styles.title} accessibilityRole="header">
+              {title}
+            </AccessibleText>
+            <AccessibleText style={styles.description}>
+              {description}
+            </AccessibleText>
           </View>
           <Button
             title={confirmLabel}
             onPress={onConfirm}
             style={[styles.button, { height: 52 * fontScale }]}
           />
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -52,6 +64,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     padding: 16,
     width: '100%',
+    zIndex: 1,
   },
   message: {
     gap: 16,

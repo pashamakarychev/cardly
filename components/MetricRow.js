@@ -4,9 +4,18 @@ import { colors, typography } from '../theme';
 
 export default function MetricRow({ label, value }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+    <View
+      style={styles.row}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`${label}, ${value}`}
+    >
+      <Text style={styles.label} importantForAccessibility="no">
+        {label}
+      </Text>
+      <Text style={styles.value} importantForAccessibility="no">
+        {value}
+      </Text>
     </View>
   );
 }

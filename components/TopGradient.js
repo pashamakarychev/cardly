@@ -23,6 +23,9 @@ export default function TopGradient({
   return (
     <View
       pointerEvents="none"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={[styles.overlay, { height: fillHeight + fadeHeight }]}
     >
       {fillHeight > 0 ? (

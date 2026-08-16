@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { colors, typography } from '../theme';
+import AccessibleText from './AccessibleText';
 import Chip from './Chip';
+import { colors, typography } from '../theme';
 
 export default function ChipSection({
   label,
@@ -11,8 +12,10 @@ export default function ChipSection({
   disabledOptions = [],
 }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={styles.section} accessibilityRole="radiogroup">
+      <AccessibleText style={styles.label} accessibilityRole="header">
+        {label}
+      </AccessibleText>
       <View style={styles.options}>
         {options.map((option) => (
           <Chip

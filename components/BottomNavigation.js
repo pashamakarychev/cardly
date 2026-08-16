@@ -56,6 +56,9 @@ function NavigationItem({
     <Pressable
       onPress={onPress}
       {...pressProps}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       style={[
         styles.item,
         {
@@ -68,9 +71,12 @@ function NavigationItem({
         showPressed && styles.itemPressed,
       ]}
     >
-      <IconComponent size={24} color={colors.textPrimary} />
+      <View accessible={false} importantForAccessibility="no-hide-descendants">
+        <IconComponent size={24} color={colors.textPrimary} />
+      </View>
       <Text
         numberOfLines={1}
+        importantForAccessibility="no"
         style={[
           emphasized ? typography.navActive : typography.navInactive,
           styles.label,
@@ -121,14 +127,23 @@ export default function BottomNavigation({ activeTab, onTabPress }) {
 
   if (useNativeGlass) {
     return (
-      <GlassView style={containerStyle} isInteractive>
+      <GlassView
+        style={containerStyle}
+        isInteractive
+        accessibilityRole="tablist"
+      >
         {items}
       </GlassView>
     );
   }
 
   return (
-    <View style={[containerStyle, styles.containerDefault]}>{items}</View>
+    <View
+      style={[containerStyle, styles.containerDefault]}
+      accessibilityRole="tablist"
+    >
+      {items}
+    </View>
   );
 }
 

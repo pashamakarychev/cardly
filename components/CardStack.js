@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
+import { setAccessibilityFocusOn } from '../utils/accessibility';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
 // Geometry in Figma design space (370 x 220)
@@ -43,6 +44,11 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
   // Extra upward offset, used only by the card leaving the front slot
   const liftsRef = useRef([new Animated.Value(0), new Animated.Value(0)]);
   const frontSlotRef = useRef(0);
+  // Stable a11y target so focus isn't lost when frontSlot swaps native views.
+  const wordFocusRef = useRef(null);
+  const skipInitialWordFocusRef = useRef(true);
+
+  const displayWord = capitalizeWord(TEST_CARD_WORD ?? word);
 
   useEffect(() => {
     if (transitionTrigger === 0) {
@@ -101,6 +107,16 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
     });
   }, [transitionTrigger]);
 
+  // After each completed word (not the first mount), return TalkBack / VoiceOver
+  // to the card so focus doesn't jump to Close session.
+  useEffect(() => {
+    if (skipInitialWordFocusRef.current) {
+      skipInitialWordFocusRef.current = false;
+      return;
+    }
+    setAccessibilityFocusOn(wordFocusRef);
+  }, [word]);
+
   // Convert design units to on-screen pixels based on the measured width
   const px = stackWidth / DESIGN_W;
   const liftPx = FRONT.h * px;
@@ -110,6 +126,10 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
   const renderCard = (slot) => {
     const pose = posesRef.current[slot];
     const lift = liftsRef.current[slot];
+    const isFront = slot === frontSlot;
+    const cardWord = capitalizeWord(
+      TEST_CARD_WORD ?? (isFront ? word : nextWord),
+    );
 
     const translateX = pose.interpolate({
       inputRange: [0, 1],
@@ -131,6 +151,8 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
     return (
       <Animated.View
         key={slot}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
         style={[
           styles.card,
           {
@@ -145,10 +167,9 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}
+          importantForAccessibility="no"
         >
-          {capitalizeWord(
-            TEST_CARD_WORD ?? (slot === frontSlot ? word : nextWord),
-          )}
+          {cardWord}
         </Text>
       </Animated.View>
     );
@@ -165,6 +186,15 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
     >
       {renderCard(0)}
       {renderCard(1)}
+      {/* Stable focus target — survives card slot swaps after each round. */}
+      <View
+        ref={wordFocusRef}
+        pointerEvents="none"
+        style={styles.wordFocusTarget}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={displayWord}
+      />
     </View>
   );
 }
@@ -184,6 +214,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+  },
+  wordFocusTarget: {
+    position: 'absolute',
+    top: `${(FRONT.top / DESIGN_H) * 100}%`,
+    left: 0,
+    width: '100%',
+    height: `${(FRONT.h / DESIGN_H) * 100}%`,
   },
   word: {
     ...typography.cardWord,

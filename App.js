@@ -63,6 +63,11 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
 import { colors, layout } from './theme';
+import {
+  announceForAccessibility,
+  routeAnnouncement,
+  tabAnnouncement,
+} from './utils/accessibility';
 
 const Stack = createStackNavigator();
 
@@ -380,13 +385,21 @@ function AppContent() {
   const handleNavigationStateChange = () => {
     const routeName = navigationRef.getCurrentRoute()?.name;
     if (routeName === MAIN_ROUTE) {
-      setActiveTab((tab) => tab ?? 'home');
+      setActiveTab((tab) => {
+        const next = tab ?? 'home';
+        announceForAccessibility(tabAnnouncement(next));
+        return next;
+      });
       clearPendingSession();
       refreshHomeStats();
       loadLevelCompleted();
       return;
     }
     setActiveTab(null);
+    const announcement = routeAnnouncement(routeName);
+    if (announcement) {
+      announceForAccessibility(announcement);
+    }
   };
 
   // Tab taps animate the pager; swipes are handled interactively inside it.
@@ -396,6 +409,7 @@ function AppContent() {
       return;
     }
     setActiveTab(tab);
+    announceForAccessibility(tabAnnouncement(tab));
     tabsRef.current?.setPage(targetIndex, true);
   };
 
@@ -469,7 +483,10 @@ function AppContent() {
             transitionSpec: slideTransitionSpec,
           }}
         >
-          <Stack.Screen name="Onboarding">
+          <Stack.Screen
+            name="Onboarding"
+            options={{ title: "Let's get started" }}
+          >
             {() => (
               <OnboardingScreen
                 onContinue={(prefs) => {
@@ -485,15 +502,21 @@ function AppContent() {
               />
             )}
           </Stack.Screen>
-          <Stack.Screen name={MAIN_ROUTE}>
+          <Stack.Screen name={MAIN_ROUTE} options={{ title: 'Home' }}>
             {() => (
               <MainTabsScreen
                 ref={tabsRef}
                 onPageIndexChange={(index) => {
                   const tab = TAB_KEYS[index];
-                  if (tab != null) {
-                    setActiveTab(tab);
+                  if (tab == null) {
+                    return;
                   }
+                  setActiveTab((prev) => {
+                    if (prev !== tab) {
+                      announceForAccessibility(tabAnnouncement(tab));
+                    }
+                    return tab;
+                  });
                 }}
                 homeProps={{
                   newWords: homeStats.newWords,
@@ -517,8 +540,13 @@ function AppContent() {
               />
             )}
           </Stack.Screen>
-          <Stack.Screen name="Session">{() => renderSession()}</Stack.Screen>
-          <Stack.Screen name="SessionComplete">
+          <Stack.Screen name="Session" options={{ title: 'Study session' }}>
+            {() => renderSession()}
+          </Stack.Screen>
+          <Stack.Screen
+            name="SessionComplete"
+            options={{ title: 'Session complete' }}
+          >
             {() => (
               <SessionCompleteScreen
                 newWords={sessionStats.newWordsLearned}

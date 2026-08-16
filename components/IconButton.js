@@ -1,17 +1,25 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useDelayedPressed } from './useDelayedPressed';
 
-export default function IconButton({ icon, onPress }) {
+export default function IconButton({
+  icon,
+  onPress,
+  accessibilityLabel,
+}) {
   const { showPressed, pressProps } = useDelayedPressed();
 
   return (
     <Pressable
       onPress={onPress}
       {...pressProps}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       style={[styles.button, showPressed && styles.pressed]}
     >
-      {icon}
+      <View accessible={false} importantForAccessibility="no-hide-descendants">
+        {icon}
+      </View>
     </Pressable>
   );
 }

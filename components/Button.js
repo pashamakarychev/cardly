@@ -8,6 +8,16 @@ import { colors, typography } from '../theme';
 
 const BUTTON_HEIGHT = 60;
 
+function feedbackLabel(status) {
+  if (status === 'correct') {
+    return 'correct';
+  }
+  if (status === 'incorrect') {
+    return 'incorrect';
+  }
+  return null;
+}
+
 // status ('correct' | 'incorrect') shows answer feedback on secondary buttons
 export default function Button({
   title,
@@ -25,12 +35,19 @@ export default function Button({
   const { showPressed, pressProps } = useDelayedPressed({
     disabled: disabled || showFeedback,
   });
+  const feedback = feedbackLabel(status);
+  const accessibilityLabel = feedback ? `${title}, ${feedback}` : title;
 
   return (
     <Pressable
-      disabled={disabled}
+      disabled={disabled || showFeedback}
       onPress={onPress}
       {...pressProps}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{
+        disabled: disabled || showFeedback,
+      }}
       style={[
         styles.button,
         { height: BUTTON_HEIGHT * fontScale },
@@ -44,7 +61,10 @@ export default function Button({
         style,
       ]}
     >
-      <View style={styles.content}>
+      <View
+        style={styles.content}
+        importantForAccessibility="no-hide-descendants"
+      >
         {showFeedback ? (
           status === 'correct' ? (
             <CheckIcon size={24} color={iconColor} />
@@ -61,6 +81,8 @@ export default function Button({
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}
+          accessible={false}
+          importantForAccessibility="no"
         >
           {title}
         </Text>

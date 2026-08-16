@@ -15,6 +15,9 @@ export default function Chip({
     <Pressable
       disabled={disabled}
       onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ selected, disabled }}
       style={[
         styles.chip,
         {
@@ -26,6 +29,8 @@ export default function Chip({
       ]}
     >
       <Text
+        accessible={false}
+        importantForAccessibility="no"
         style={[
           styles.label,
           disabled && styles.labelDisabled,

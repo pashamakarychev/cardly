@@ -10,7 +10,9 @@ import TopGradient from '../components/TopGradient';
 import { XIcon } from '../components/icons/XIcon';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useScreenReaderEnabled } from '../hooks/useScreenReaderEnabled';
 import { colors, layout } from '../theme';
+import { announceForAccessibility } from '../utils/accessibility';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
 // Figma tablet Content frame height — keeps New Word / Exercise aligned.
@@ -23,6 +25,8 @@ const BUTTONS_HEIGHT = BUTTON_HEIGHT * 4 + BUTTON_GAP * 3;
 
 // Pause after a tap so the button feedback registers before the cards move
 const TRANSITION_DELAY_MS = 300;
+// Extra time for TalkBack / VoiceOver to finish speaking answer feedback.
+const SCREEN_READER_FEEDBACK_DELAY_MS = 2000;
 
 export const SESSION_MODES = {
   EXERCISE: 'exercise',
@@ -48,6 +52,7 @@ export default function SessionScreen({
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const fontScale = useFontScale();
+  const screenReaderEnabled = useScreenReaderEnabled();
   const { height: windowHeight } = useWindowDimensions();
   const [wrongOptions, setWrongOptions] = useState([]);
   const [resolved, setResolved] = useState(false);
@@ -71,6 +76,10 @@ export default function SessionScreen({
     onTransitionEnd?.();
   };
 
+  const feedbackDelayMs = screenReaderEnabled
+    ? SCREEN_READER_FEEDBACK_DELAY_MS
+    : TRANSITION_DELAY_MS;
+
   // Button state updates immediately; the action is reported right away so
   // the next step can be prepared while the feedback pause (and optional
   // card transition) play out. When the action resolves to false (last card),
@@ -87,7 +96,7 @@ export default function SessionScreen({
           return;
         }
         setTransitionTrigger((count) => count + 1);
-      }, TRANSITION_DELAY_MS);
+      }, feedbackDelayMs);
     })();
   };
 
@@ -96,9 +105,18 @@ export default function SessionScreen({
       return;
     }
 
+    const optionLabel = capitalizeWord(TEST_CARD_WORD ?? option);
+
     if (option !== correctAnswer) {
       setWrongOptions((current) => [...current, option]);
+      if (screenReaderEnabled) {
+        announceForAccessibility(`${optionLabel}, incorrect`);
+      }
       return;
+    }
+
+    if (screenReaderEnabled) {
+      announceForAccessibility(`${optionLabel}, correct`);
     }
 
     const firstAttemptCorrect = wrongOptions.length === 0;
@@ -159,15 +177,21 @@ export default function SessionScreen({
             title={capitalizeWord(TEST_CARD_WORD ?? option)}
             variant="secondary"
             status={statusFor(option)}
+            disabled={resolved}
             onPress={() => handleAnswer(option)}
           />
         ))
       ) : (
         <>
-          <Button title="Learn" onPress={() => handleChoice(onLearn)} />
+          <Button
+            title="Learn"
+            disabled={resolved}
+            onPress={() => handleChoice(onLearn)}
+          />
           <Button
             title="Already know"
             variant="secondary"
+            disabled={resolved}
             onPress={() => handleChoice(onAlreadyKnow)}
           />
         </>
@@ -225,7 +249,11 @@ export default function SessionScreen({
           { top: topInset, height: headerHeight, paddingHorizontal },
         ]}
       >
-        <IconButton icon={<XIcon />} onPress={onClose} />
+        <IconButton
+          icon={<XIcon />}
+          onPress={onClose}
+          accessibilityLabel="Close session"
+        />
         <ProgressBar progress={progress} />
       </View>
     </View>

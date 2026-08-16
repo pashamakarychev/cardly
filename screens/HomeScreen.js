@@ -1,8 +1,9 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
+import AccessibleText from '../components/AccessibleText';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
@@ -81,12 +82,18 @@ export default function HomeScreen({
       >
         <View style={[styles.content, !isTablet && styles.contentPhone]}>
           {!isTablet && <View style={styles.spacer} />}
-          <Text style={styles.title}>Study Session</Text>
+          <AccessibleText style={styles.title} accessibilityRole="header">
+            Study Session
+          </AccessibleText>
           <View style={styles.metricsContainer}>
             <MetricRow label="New Words" value={String(newWords)} />
             <MetricRow label="Words to Review" value={String(wordsToReview)} />
           </View>
-          <Button title="Start" onPress={onStart} disabled={!canStart} />
+          <Button
+            title="Start"
+            onPress={onStart}
+            disabled={!canStart}
+          />
         </View>
       </ScrollView>
       <BottomGradient bottom={navBottom} />

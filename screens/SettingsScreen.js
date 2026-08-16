@@ -1,9 +1,10 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
 import ChipSection from '../components/ChipSection';
@@ -148,7 +149,14 @@ export default function SettingsScreen({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
-          {isTablet && <Text style={styles.tabletTitle}>Settings</Text>}
+          {isTablet && (
+            <AccessibleText
+              style={styles.tabletTitle}
+              accessibilityRole="header"
+            >
+              Settings
+            </AccessibleText>
+          )}
           {chipSections}
         </View>
       </ScrollView>
@@ -163,17 +171,29 @@ export default function SettingsScreen({
         ]}
       >
         {isTablet ? (
-          <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
+          <IconButton
+            icon={<ChevronLeftIcon />}
+            onPress={onBack}
+            accessibilityLabel="Back"
+          />
         ) : (
           <>
-            <IconButton icon={<ChevronLeftIcon />} onPress={onBack} />
-            <Text style={styles.title}>Settings</Text>
+            <IconButton
+              icon={<ChevronLeftIcon />}
+              onPress={onBack}
+              accessibilityLabel="Back"
+            />
+            <AccessibleText style={styles.title} accessibilityRole="header">
+              Settings
+            </AccessibleText>
             {/* Balances the back button so the title stays visually centered. */}
             <View
               style={[
                 styles.headerSpacer,
                 { height: headerHeight, width: headerHeight },
               ]}
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
             />
           </>
         )}

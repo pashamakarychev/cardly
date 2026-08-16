@@ -22,6 +22,9 @@ export default function BottomGradient({
   return (
     <View
       pointerEvents="none"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={[styles.container, { height: bottom + height }]}
     >
       {height > 0 ? (

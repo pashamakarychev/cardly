@@ -1,8 +1,9 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import ChipSection from '../components/ChipSection';
@@ -109,7 +110,9 @@ export default function OnboardingScreen({ onContinue }) {
           ]}
         >
           {isTablet && (
-            <Text style={styles.title}>Let's get started</Text>
+            <AccessibleText style={styles.title} accessibilityRole="header">
+              Let's get started
+            </AccessibleText>
           )}
           <ChipSection
             label="I speak"
@@ -151,7 +154,9 @@ export default function OnboardingScreen({ onContinue }) {
               { top: topInset, height: headerHeight, paddingHorizontal },
             ]}
           >
-            <Text style={styles.title}>Let's get started</Text>
+            <AccessibleText style={styles.title} accessibilityRole="header">
+              Let's get started
+            </AccessibleText>
           </View>
         </>
       )}

@@ -7,9 +7,18 @@ export default function MetricCard({ value, label }) {
   const fontScale = useFontScale();
 
   return (
-    <View style={[styles.card, { minHeight: 96 * fontScale }]}>
-      <Text style={styles.value}>{value}</Text>
-      <Text style={styles.label}>{label}</Text>
+    <View
+      style={[styles.card, { minHeight: 96 * fontScale }]}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`${value} ${label}`}
+    >
+      <Text style={styles.value} importantForAccessibility="no">
+        {value}
+      </Text>
+      <Text style={styles.label} importantForAccessibility="no">
+        {label}
+      </Text>
     </View>
   );
 }

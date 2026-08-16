@@ -1,6 +1,7 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
 import Button from '../components/Button';
 import MetricCard from '../components/MetricCard';
@@ -49,10 +50,16 @@ export default function SessionCompleteScreen({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
+          <View
+            style={styles.iconContainer}
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
+          >
             <CheckIcon size={48} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Session complete!</Text>
+          <AccessibleText style={styles.title} accessibilityRole="header">
+            Session complete!
+          </AccessibleText>
           <View style={styles.metrics}>
             <MetricCard value={String(newWords)} label="New Words" />
             <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />

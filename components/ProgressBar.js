@@ -4,10 +4,23 @@ import { colors } from '../theme';
 
 export default function ProgressBar({ progress = 0 }) {
   const clamped = Math.min(Math.max(progress, 0), 1);
+  const percent = Math.round(clamped * 100);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${clamped * 100}%` }]} />
+    <View
+      style={styles.container}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={`${percent}%`}
+    >
+      <View
+        style={styles.track}
+        importantForAccessibility="no-hide-descendants"
+      >
+        <View
+          style={[styles.fill, { width: `${clamped * 100}%` }]}
+          importantForAccessibility="no"
+        />
       </View>
     </View>
   );
