@@ -138,12 +138,7 @@ export default function SettingsScreen({
           {
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
-            paddingBottom: Math.max(
-              navBottom + navHeight + (isTablet ? 0 : 16),
-              isTablet
-                ? layout.tabletScreenPadding
-                : layout.screenPaddingBottom,
-            ),
+            paddingBottom: navBottom + navHeight + layout.contentToOverlayGap,
           },
         ]}
         showsVerticalScrollIndicator={false}

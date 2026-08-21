@@ -97,8 +97,8 @@ export default function OnboardingScreen({ onContinue }) {
           {
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
-            // Clears the absolutely positioned Continue button.
-            paddingBottom: continueHeight + continueBottom + 24,
+            // Clears the pinned Continue button with Figma’s 64px gap.
+            paddingBottom: continueHeight + continueBottom + layout.contentToOverlayGap,
           },
         ]}
         showsVerticalScrollIndicator={false}

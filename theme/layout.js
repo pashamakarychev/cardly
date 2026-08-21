@@ -10,7 +10,9 @@ export const layout = {
   screenPaddingBottom: 50,
   contentTopPadding: 19,
 
-  // Figma Top/Bottom Gradient fade bands (fill covers the safe-area insets).
+  // Figma Onboarding/Settings: space from last content to Continue / nav.
+  // Onboarding container pb 124 = 64 + 60px button; Settings pb 128 = 64 + 64px nav.
+  contentToOverlayGap: 64,
   topGradientFade: 48,
   bottomGradientFade: 64,
 
