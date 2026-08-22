@@ -1,13 +1,39 @@
 // Data-access layer: every SQL query and db.* call lives here.
 // Callers pass the expo-sqlite connection; this module does not change query results.
 
+// TEMP: log every SQL call
+function logSql(method, sql, params) {
+  const text = typeof sql === 'string' ? sql.replace(/\s+/g, ' ').trim() : String(sql);
+  console.log(`db ${method}: ${text}`, ...params);
+}
+
+function getFirstAsync(db, sql, ...params) {
+  logSql('getFirstAsync', sql, params);
+  return db.getFirstAsync(sql, ...params);
+}
+
+function getAllAsync(db, sql, ...params) {
+  logSql('getAllAsync', sql, params);
+  return db.getAllAsync(sql, ...params);
+}
+
+function runAsync(db, sql, ...params) {
+  logSql('runAsync', sql, params);
+  return db.runAsync(sql, ...params);
+}
+
+function execAsync(db, sql, ...params) {
+  logSql('execAsync', sql, params);
+  return db.execAsync(sql, ...params);
+}
+
 export async function configureConnection(db) {
-  await db.execAsync('PRAGMA foreign_keys = ON');
-  await db.execAsync('PRAGMA journal_mode = WAL');
+  await execAsync(db, 'PRAGMA foreign_keys = ON');
+  await execAsync(db, 'PRAGMA journal_mode = WAL');
 }
 
 export async function getSettings(db) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     `
       SELECT
         native_language,
@@ -31,7 +57,7 @@ export async function completeOnboarding(
   db,
   { nativeLanguage, learningLanguage, level, newWordsPerDay }
 ) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       INSERT INTO settings (
         id,
@@ -60,25 +86,25 @@ export async function updateSettings(
   { nativeLanguage, learningLanguage, level, newWordsPerDay }
 ) {
   if (nativeLanguage != null) {
-    await db.runAsync(
+    await runAsync(db, 
       `UPDATE settings SET native_language = ? WHERE id = 1`,
       nativeLanguage
     );
   }
 
   if (learningLanguage != null) {
-    await db.runAsync(
+    await runAsync(db, 
       `UPDATE settings SET learning_language = ? WHERE id = 1`,
       learningLanguage
     );
   }
 
   if (level != null) {
-    await db.runAsync(`UPDATE settings SET level = ? WHERE id = 1`, level);
+    await runAsync(db, `UPDATE settings SET level = ? WHERE id = 1`, level);
   }
 
   if (newWordsPerDay != null) {
-    await db.runAsync(
+    await runAsync(db, 
       `UPDATE settings SET new_words_per_day = ? WHERE id = 1`,
       Number(newWordsPerDay)
     );
@@ -86,7 +112,7 @@ export async function updateSettings(
 }
 
 export async function getSessionValue(db, key, language) {
-  const row = await db.getFirstAsync(
+  const row = await getFirstAsync(db, 
     'SELECT value FROM session WHERE key = ? AND language = ?',
     key,
     language
@@ -95,7 +121,7 @@ export async function getSessionValue(db, key, language) {
 }
 
 export async function setSessionValue(db, key, value, language) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       INSERT INTO session (key, value, language) VALUES (?, ?, ?)
       ON CONFLICT(key, language) DO UPDATE SET value = excluded.value
@@ -107,7 +133,7 @@ export async function setSessionValue(db, key, value, language) {
 }
 
 export async function deleteSessionValue(db, key, language) {
-  await db.runAsync(
+  await runAsync(db, 
     'DELETE FROM session WHERE key = ? AND language = ?',
     key,
     language
@@ -115,7 +141,7 @@ export async function deleteSessionValue(db, key, language) {
 }
 
 export async function getLearningProgressIntervalIndex(db, wordId, language) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     'SELECT interval_index FROM learning_progress WHERE word_id = ? AND language = ?',
     wordId,
     language
@@ -129,7 +155,7 @@ export async function updateLearningProgressReview(
   intervalIndex,
   nextReviewAt
 ) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       UPDATE learning_progress
       SET interval_index = ?, next_review_at = ?
@@ -150,7 +176,7 @@ export async function upsertLearningProgress(
   intervalIndex,
   language
 ) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       INSERT INTO learning_progress (word_id, state, next_review_at, interval_index, language)
       VALUES (?, ?, ?, ?, ?)
@@ -169,7 +195,7 @@ export async function upsertLearningProgress(
 }
 
 export async function selectDueLearningWords(db, language, state, now) {
-  return db.getAllAsync(
+  return getAllAsync(db, 
     `
       SELECT
         w.id,
@@ -197,7 +223,7 @@ export async function selectDueLearningWords(db, language, state, now) {
 }
 
 export async function selectNearestNextReviewAt(db, language, state, now) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     `
       SELECT lp.next_review_at AS next_review_at
       FROM learning_progress lp
@@ -219,21 +245,21 @@ export async function selectNearestNextReviewAt(db, language, state, now) {
 }
 
 export async function selectActiveWordStreaks(db, language) {
-  return db.getAllAsync(
+  return getAllAsync(db, 
     'SELECT correct_streak FROM active_words WHERE language = ?',
     language
   );
 }
 
 export async function countActiveWords(db, language) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     'SELECT COUNT(*) AS count FROM active_words WHERE language = ?',
     language
   );
 }
 
 export async function selectActiveWordAtPosition(db, position, language) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     `
       SELECT
         aw.word_id AS id,
@@ -252,7 +278,7 @@ export async function selectActiveWordAtPosition(db, position, language) {
 }
 
 export async function selectOccupiedActivePosition(db, position, language) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     'SELECT position FROM active_words WHERE position = ? AND language = ?',
     position,
     language
@@ -260,7 +286,7 @@ export async function selectOccupiedActivePosition(db, position, language) {
 }
 
 export async function incrementActiveWordStreak(db, wordId, language) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       UPDATE active_words
       SET correct_streak = correct_streak + 1
@@ -272,7 +298,7 @@ export async function incrementActiveWordStreak(db, wordId, language) {
 }
 
 export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     'SELECT correct_streak, added_as FROM active_words WHERE word_id = ? AND language = ?',
     wordId,
     language
@@ -280,7 +306,7 @@ export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
 }
 
 export async function deleteActiveWord(db, wordId, language) {
-  await db.runAsync(
+  await runAsync(db, 
     'DELETE FROM active_words WHERE word_id = ? AND language = ?',
     wordId,
     language
@@ -288,7 +314,7 @@ export async function deleteActiveWord(db, wordId, language) {
 }
 
 export async function resetActiveWordStreak(db, wordId, language) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       UPDATE active_words
       SET correct_streak = 0
@@ -300,14 +326,14 @@ export async function resetActiveWordStreak(db, wordId, language) {
 }
 
 export async function selectActiveWordPositions(db, language) {
-  return db.getAllAsync(
+  return getAllAsync(db, 
     'SELECT position FROM active_words WHERE language = ?',
     language
   );
 }
 
 export async function insertActiveWord(db, wordId, position, addedAs, language) {
-  await db.runAsync(
+  await runAsync(db, 
     `
       INSERT INTO active_words (word_id, position, correct_streak, added_as, language)
       VALUES (?, ?, 0, ?, ?)
@@ -320,7 +346,7 @@ export async function insertActiveWord(db, wordId, position, addedAs, language) 
 }
 
 export async function selectActiveWordsAddedAsCounts(db, language) {
-  return db.getAllAsync(
+  return getAllAsync(db, 
     `
       SELECT added_as, COUNT(*) AS count
       FROM active_words
@@ -333,7 +359,7 @@ export async function selectActiveWordsAddedAsCounts(db, language) {
 
 export async function countUndisplayedWords(db, language, wordLanguage, levels) {
   const placeholders = levels.map(() => '?').join(', ');
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     `
       SELECT COUNT(*) AS count
       FROM words w
@@ -354,7 +380,7 @@ export async function countUndisplayedWords(db, language, wordLanguage, levels) 
 }
 
 export async function selectTranslation(db, wordId, language) {
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     `
       SELECT translation
       FROM translations
@@ -373,7 +399,7 @@ export async function selectSameLevelDistractors(
   nativeLanguage,
   correctTranslation
 ) {
-  return db.getAllAsync(
+  return getAllAsync(db, 
     `
       SELECT DISTINCT t.translation
       FROM words w
@@ -410,7 +436,7 @@ export async function selectOtherLevelDistractors(
       ? `AND t.translation NOT IN (${placeholders})`
       : '';
 
-  return db.getAllAsync(
+  return getAllAsync(db, 
     `
       SELECT DISTINCT t.translation
       FROM words w
@@ -442,7 +468,7 @@ export async function selectUndisplayedWordAtLevel(
   excludeWordId
 ) {
   if (excludeWordId != null) {
-    return db.getFirstAsync(
+    return getFirstAsync(db, 
       `
         SELECT w.id, w.text, w.language, w.level
         FROM words w
@@ -466,7 +492,7 @@ export async function selectUndisplayedWordAtLevel(
     );
   }
 
-  return db.getFirstAsync(
+  return getFirstAsync(db, 
     `
       SELECT w.id, w.text, w.language, w.level
       FROM words w

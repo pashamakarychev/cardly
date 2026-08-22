@@ -1,7 +1,7 @@
 // SQLite setup for Cardly. SQLiteProvider copies the bundled database into
 // local storage on first launch via assetSource, then runs initDb.
 
-import { configureConnection } from './queries';
+import { configureConnection } from './repository';
 
 export const DATABASE_NAME = 'cardly.db';
 

@@ -19,7 +19,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import BottomNavigation, { TAB_KEYS } from './components/BottomNavigation';
 import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
-import { getSettings } from './db/queries';
+import { getSettings } from './db/repository';
 import {
   ADDED_AS,
   EXERCISE_SOURCES,

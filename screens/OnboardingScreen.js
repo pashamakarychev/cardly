@@ -9,7 +9,7 @@ import Button from '../components/Button';
 import ChipSection from '../components/ChipSection';
 import TopGradient from '../components/TopGradient';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
-import { completeOnboarding } from '../db/queries';
+import { completeOnboarding } from '../db/repository';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';

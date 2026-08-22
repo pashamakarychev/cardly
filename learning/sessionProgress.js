@@ -2,7 +2,7 @@
 // user works through them. Logic will live here so getNextStep / App stay focused
 // on what to show next, not how far along the session is.
 
-import { getLearningLanguage, getSessionValue, selectActiveWordStreaks, setSessionValue } from '../db/queries';
+import { getLearningLanguage, getSessionValue, selectActiveWordStreaks, setSessionValue } from '../db/repository';
 import { getDueLearningWords, getNewWordsRemainingToday } from './learning';
 
 /** Correct first-attempt answers needed before a word leaves active_words. */

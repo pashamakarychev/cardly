@@ -29,7 +29,7 @@ import {
   updateLearningProgressReview,
   updateSettings,
   upsertLearningProgress,
-} from '../db/queries';
+} from '../db/repository';
 
 export const SESSION_KEYS = {
   ACTIVE_POSITION: 'active_position',
