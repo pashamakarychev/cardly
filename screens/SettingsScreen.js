@@ -18,7 +18,7 @@ import {
   SPEAK_LANGUAGES,
   WORDS_PER_DAY,
 } from '../constants/preferences';
-import { updateSettings } from '../db/settings';
+import { updateSettings } from '../db/queries';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { colors, layout, typography } from '../theme';

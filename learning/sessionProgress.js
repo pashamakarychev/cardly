@@ -2,7 +2,7 @@
 // user works through them. Logic will live here so getNextStep / App stay focused
 // on what to show next, not how far along the session is.
 
-import { getLearningLanguage } from '../db/settings';
+import { getLearningLanguage, getSessionValue, selectActiveWordStreaks, setSessionValue } from '../db/queries';
 import { getDueLearningWords, getNewWordsRemainingToday } from './learning';
 
 /** Correct first-attempt answers needed before a word leaves active_words. */
@@ -22,10 +22,7 @@ async function countActiveWordsSteps(db) {
     return 0;
   }
 
-  const rows = await db.getAllAsync(
-    'SELECT correct_streak FROM active_words WHERE language = ?',
-    language
-  );
+  const rows = await selectActiveWordStreaks(db, language);
 
   return rows.reduce((total, row) => {
     const streak = Number(row.correct_streak);
@@ -52,12 +49,8 @@ export async function getCompletedSteps(db) {
     return 0;
   }
 
-  const row = await db.getFirstAsync(
-    'SELECT value FROM session WHERE key = ? AND language = ?',
-    PROGRESS_KEYS.COMPLETED_STEPS,
-    language
-  );
-  const value = Number(row?.value);
+  const raw = await getSessionValue(db, PROGRESS_KEYS.COMPLETED_STEPS, language);
+  const value = Number(raw);
   return Number.isFinite(value) ? value : 0;
 }
 
@@ -68,15 +61,7 @@ async function setCompletedSteps(db, value) {
   }
 
   const next = Math.max(0, value);
-  await db.runAsync(
-    `
-      INSERT INTO session (key, value, language) VALUES (?, ?, ?)
-      ON CONFLICT(key, language) DO UPDATE SET value = excluded.value
-    `,
-    PROGRESS_KEYS.COMPLETED_STEPS,
-    String(next),
-    language
-  );
+  await setSessionValue(db, PROGRESS_KEYS.COMPLETED_STEPS, String(next), language);
   return next;
 }
 
