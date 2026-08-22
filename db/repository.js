@@ -81,6 +81,15 @@ function cachedActiveWordIds(language) {
   return cache.getActiveWordsCache(language).map((row) => row.word_id);
 }
 
+// Keep SQLite writes ordered without blocking cache reads used for the next card.
+let persistChain = Promise.resolve();
+
+function persist(task) {
+  persistChain = persistChain.then(task).catch((error) => {
+    console.error('Failed to persist database write', error);
+  });
+}
+
 async function ensureLearningProgressCache(db, language) {
   if (cache.hasLearningProgressCache(language)) {
     return;
@@ -170,14 +179,14 @@ export async function getSessionValue(db, key, language) {
 
 export async function setSessionValue(db, key, value, language) {
   await ensureSessionCache(db, language);
-  await queries.setSessionValue(db, key, value, language);
   cache.setSessionCacheValue(language, key, value);
+  persist(() => queries.setSessionValue(db, key, value, language));
 }
 
 export async function deleteSessionValue(db, key, language) {
   await ensureSessionCache(db, language);
-  await queries.deleteSessionValue(db, key, language);
   cache.deleteSessionCacheValue(language, key);
+  persist(() => queries.deleteSessionValue(db, key, language));
 }
 
 export async function getLearningProgressIntervalIndex(db, wordId, language) {
@@ -199,18 +208,20 @@ export async function updateLearningProgressReview(
   nextReviewAt
 ) {
   await ensureLearningProgressCache(db, language);
-  await queries.updateLearningProgressReview(
-    db,
-    wordId,
-    language,
-    intervalIndex,
-    nextReviewAt
-  );
   cache.updateLearningProgressReviewCache(
     language,
     wordId,
     intervalIndex,
     nextReviewAt
+  );
+  persist(() =>
+    queries.updateLearningProgressReview(
+      db,
+      wordId,
+      language,
+      intervalIndex,
+      nextReviewAt
+    )
   );
 }
 
@@ -223,15 +234,6 @@ export async function upsertLearningProgress(
   language
 ) {
   await ensureLearningProgressCache(db, language);
-  await queries.upsertLearningProgress(
-    db,
-    wordId,
-    state,
-    nextReviewAt,
-    intervalIndex,
-    language
-  );
-
   const existing = cache
     .getLearningProgressCache(language)
     .find((item) => sameId(item.word_id, wordId));
@@ -246,6 +248,16 @@ export async function upsertLearningProgress(
     word_language: existing?.word_language ?? word?.language,
     level: existing?.level ?? word?.level,
   });
+  persist(() =>
+    queries.upsertLearningProgress(
+      db,
+      wordId,
+      state,
+      nextReviewAt,
+      intervalIndex,
+      language
+    )
+  );
 }
 
 export async function selectDueLearningWords(db, language, state, now) {
@@ -343,8 +355,8 @@ export async function selectOccupiedActivePosition(db, position, language) {
 
 export async function incrementActiveWordStreak(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  await queries.incrementActiveWordStreak(db, wordId, language);
   cache.incrementActiveWordStreakCache(language, wordId);
+  persist(() => queries.incrementActiveWordStreak(db, wordId, language));
 }
 
 export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
@@ -363,14 +375,14 @@ export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
 
 export async function deleteActiveWord(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  await queries.deleteActiveWord(db, wordId, language);
   cache.deleteActiveWordCache(language, wordId);
+  persist(() => queries.deleteActiveWord(db, wordId, language));
 }
 
 export async function resetActiveWordStreak(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  await queries.resetActiveWordStreak(db, wordId, language);
   cache.resetActiveWordStreakCache(language, wordId);
+  persist(() => queries.resetActiveWordStreak(db, wordId, language));
 }
 
 export async function selectActiveWordPositions(db, language) {
@@ -382,7 +394,6 @@ export async function selectActiveWordPositions(db, language) {
 
 export async function insertActiveWord(db, wordId, position, addedAs, language) {
   await ensureActiveWordsCache(db, language);
-  await queries.insertActiveWord(db, wordId, position, addedAs, language);
   const word = await getWordRow(db, wordId);
   cache.insertActiveWordCache(language, {
     word_id: wordId,
@@ -394,6 +405,9 @@ export async function insertActiveWord(db, wordId, position, addedAs, language) 
     word_language: word?.language,
     level: word?.level,
   });
+  persist(() =>
+    queries.insertActiveWord(db, wordId, position, addedAs, language)
+  );
 }
 
 export async function selectActiveWordsAddedAsCounts(db, language) {

@@ -23,8 +23,6 @@ const BUTTON_HEIGHT = 60;
 const BUTTON_GAP = 12;
 const BUTTONS_HEIGHT = BUTTON_HEIGHT * 4 + BUTTON_GAP * 3;
 
-// Pause after a tap so the button feedback registers before the cards move
-const TRANSITION_DELAY_MS = 300;
 // Extra time for TalkBack / VoiceOver to finish speaking answer feedback.
 const SCREEN_READER_FEEDBACK_DELAY_MS = 2000;
 
@@ -56,7 +54,7 @@ export default function SessionScreen({
   const { height: windowHeight } = useWindowDimensions();
   const [wrongOptions, setWrongOptions] = useState([]);
   const [resolved, setResolved] = useState(false);
-  const [transitionTrigger, setTransitionTrigger] = useState(0);
+  const cardStackRef = useRef(null);
   const triggerTimeoutRef = useRef(null);
 
   useEffect(
@@ -76,28 +74,30 @@ export default function SessionScreen({
     onTransitionEnd?.();
   };
 
-  const feedbackDelayMs = screenReaderEnabled
-    ? SCREEN_READER_FEEDBACK_DELAY_MS
-    : TRANSITION_DELAY_MS;
-
-  // Button state updates immediately; the action is reported right away so
-  // the next step can be prepared while the feedback pause (and optional
-  // card transition) play out. When the action resolves to false (last card),
-  // the animation is skipped.
+  // Start the card swap on tap, before React re-renders, so the native-driver
+  // animation is already running. Prefetch still runs in parallel so the
+  // revealed card can pick up the next word.
   const resolveRound = (action) => {
+    const pending = Promise.resolve(action?.());
+
+    if (!screenReaderEnabled) {
+      cardStackRef.current?.playTransition();
+      setResolved(true);
+      return;
+    }
+
     setResolved(true);
 
-    (async () => {
-      const shouldAnimate = await action?.();
-      triggerTimeoutRef.current = setTimeout(() => {
-        triggerTimeoutRef.current = null;
+    triggerTimeoutRef.current = setTimeout(() => {
+      triggerTimeoutRef.current = null;
+      pending.then((shouldAnimate) => {
         if (shouldAnimate === false) {
           handleTransitionEnd();
           return;
         }
-        setTransitionTrigger((count) => count + 1);
-      }, feedbackDelayMs);
-    })();
+        cardStackRef.current?.playTransition();
+      });
+    }, SCREEN_READER_FEEDBACK_DELAY_MS);
   };
 
   const handleAnswer = (option) => {
@@ -177,7 +177,6 @@ export default function SessionScreen({
             title={capitalizeWord(TEST_CARD_WORD ?? option)}
             variant="secondary"
             status={statusFor(option)}
-            disabled={resolved}
             onPress={() => handleAnswer(option)}
           />
         ))
@@ -185,13 +184,11 @@ export default function SessionScreen({
         <>
           <Button
             title="Learn"
-            disabled={resolved}
             onPress={() => handleChoice(onLearn)}
           />
           <Button
             title="Already know"
             variant="secondary"
-            disabled={resolved}
             onPress={() => handleChoice(onAlreadyKnow)}
           />
         </>
@@ -230,9 +227,9 @@ export default function SessionScreen({
             ]}
           >
             <CardStack
+              ref={cardStackRef}
               word={word}
               nextWord={nextWord}
-              transitionTrigger={transitionTrigger}
               onTransitionEnd={handleTransitionEnd}
             />
             {buttons}

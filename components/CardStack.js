@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
@@ -28,14 +28,15 @@ const SWAP_DURATION = 280;
 // current across rotation / breakpoint layout changes.
 let lastStackWidth = 0;
 
-export default function CardStack({ word, nextWord, transitionTrigger = 0, onTransitionEnd }) {
+function CardStack(
+  { word, nextWord, onTransitionEnd },
+  ref,
+) {
   const [stackWidth, setStackWidth] = useState(() =>
     lastStackWidth > 0 ? lastStackWidth : 1,
   );
   // Slot whose card is logically the front card (controls word assignment)
   const [frontSlot, setFrontSlot] = useState(0);
-  // Slot rendered on top (flips as soon as the lift exposes the next card)
-  const [topSlot, setTopSlot] = useState(0);
 
   // pose: 0 = front position/size/color, 1 = back position/size/color.
   // These values are never reset; each card's pose persists between rounds,
@@ -44,16 +45,22 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
   // Extra upward offset, used only by the card leaving the front slot
   const liftsRef = useRef([new Animated.Value(0), new Animated.Value(0)]);
   const frontSlotRef = useRef(0);
+  const topSlotRef = useRef(0);
+  const cardRefs = useRef([null, null]);
+  const animatingRef = useRef(false);
+  const onTransitionEndRef = useRef(onTransitionEnd);
+  onTransitionEndRef.current = onTransitionEnd;
   // Stable a11y target so focus isn't lost when frontSlot swaps native views.
   const wordFocusRef = useRef(null);
   const skipInitialWordFocusRef = useRef(true);
 
   const displayWord = capitalizeWord(TEST_CARD_WORD ?? word);
 
-  useEffect(() => {
-    if (transitionTrigger === 0) {
+  const playTransition = useCallback(() => {
+    if (animatingRef.current) {
       return;
     }
+    animatingRef.current = true;
 
     const from = frontSlotRef.current;
     const to = 1 - from;
@@ -65,47 +72,56 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
       toValue: 1,
       duration: LIFT_DURATION,
       easing: Easing.out(Easing.quad),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start(({ finished }) => {
       if (!finished) {
+        animatingRef.current = false;
         return;
       }
 
       // The next card is exposed: put it on top, then swap poses in parallel.
-      setTopSlot(to);
+      // Keep stacking in a ref so a later React render (next word arriving)
+      // does not reset zIndex back to the pre-lift order.
+      topSlotRef.current = to;
+      cardRefs.current[from]?.setNativeProps({ style: { zIndex: 1 } });
+      cardRefs.current[to]?.setNativeProps({ style: { zIndex: 2 } });
 
       Animated.parallel([
         Animated.timing(lifts[from], {
           toValue: 0,
           duration: SWAP_DURATION,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(poses[from], {
           toValue: 1,
           duration: SWAP_DURATION,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(poses[to], {
           toValue: 0,
           duration: SWAP_DURATION,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ]).start(({ finished: swapFinished }) => {
+        animatingRef.current = false;
         if (!swapFinished) {
           return;
         }
 
         // Swap the logical roles. The parent advances the round in the same
-        // batch, so the new front card keeps showing the exact same string.
+        // batch as this state update, so the new front card keeps showing
+        // the exact same string.
         frontSlotRef.current = to;
         setFrontSlot(to);
-        onTransitionEnd?.();
+        onTransitionEndRef.current?.();
       });
     });
-  }, [transitionTrigger]);
+  }, []);
+
+  useImperativeHandle(ref, () => ({ playTransition }), [playTransition]);
 
   // After each completed word (not the first mount), return TalkBack / VoiceOver
   // to the card so focus doesn't jump to Close session.
@@ -143,35 +159,59 @@ export default function CardStack({ word, nextWord, transitionTrigger = 0, onTra
       inputRange: [0, 1],
       outputRange: [1, BACK_SCALE],
     });
-    const backgroundColor = pose.interpolate({
+    const frontColorOpacity = pose.interpolate({
       inputRange: [0, 1],
-      outputRange: [colors.textCardSecondary, colors.textCard],
+      outputRange: [1, 0],
     });
 
     return (
-      <Animated.View
+      <View
         key={slot}
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
+        ref={(node) => {
+          cardRefs.current[slot] = node;
+        }}
+        collapsable={false}
+        pointerEvents="box-none"
         style={[
-          styles.card,
-          {
-            backgroundColor,
-            zIndex: slot === topSlot ? 2 : 1,
-            transform: [{ translateX }, { translateY }, { scale }],
-          },
+          styles.cardSlot,
+          { zIndex: slot === topSlotRef.current ? 2 : 1 },
         ]}
       >
-        <Text
-          style={styles.word}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
-          importantForAccessibility="no"
+        <Animated.View
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          style={[
+            styles.card,
+            {
+              transform: [{ translateX }, { translateY }, { scale }],
+            },
+          ]}
         >
-          {cardWord}
-        </Text>
-      </Animated.View>
+          <View
+            pointerEvents="none"
+            style={[styles.cardFace, { backgroundColor: colors.textCard }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.cardFace,
+              {
+                backgroundColor: colors.textCardSecondary,
+                opacity: frontColorOpacity,
+              },
+            ]}
+          />
+          <Text
+            style={styles.word}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+            importantForAccessibility="no"
+          >
+            {cardWord}
+          </Text>
+        </Animated.View>
+      </View>
     );
   };
 
@@ -204,16 +244,25 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: STACK_ASPECT_RATIO,
   },
-  card: {
+  cardSlot: {
     position: 'absolute',
     top: `${(FRONT.top / DESIGN_H) * 100}%`,
     left: 0,
     width: '100%',
     height: `${(FRONT.h / DESIGN_H) * 100}%`,
+  },
+  card: {
+    width: '100%',
+    height: '100%',
     borderRadius: 32,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+  },
+  cardFace: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 32,
   },
   wordFocusTarget: {
     position: 'absolute',
@@ -227,5 +276,8 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     textAlign: 'center',
     width: '100%',
+    zIndex: 1,
   },
 });
+
+export default forwardRef(CardStack);
