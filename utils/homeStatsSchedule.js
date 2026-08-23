@@ -17,3 +17,42 @@ export function msUntilTimestamp(at, now = Date.now()) {
   }
   return Math.min(Math.max(0, target - now), MAX_TIMEOUT_MS);
 }
+
+/**
+ * Soonest time words can appear: a scheduled review, and/or local midnight
+ * when the daily new-word allowance resets.
+ */
+export function nextWordsAvailableAt(
+  now,
+  { nextReviewAt, hasNewWordsAtMidnight }
+) {
+  const candidates = [];
+  if (hasNewWordsAtMidnight) {
+    candidates.push(now + msUntilLocalMidnight(now));
+  }
+  const review = Number(nextReviewAt);
+  if (Number.isFinite(review) && review > now) {
+    candidates.push(review);
+  }
+  if (candidates.length === 0) {
+    return null;
+  }
+  return Math.min(...candidates);
+}
+
+/** Remaining time as “3h 24m 17s”, omitting hours under 1h and minutes under 1m. */
+export function formatWordsAvailableIn(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [];
+  if (hours >= 1) {
+    parts.push(`${hours}h`);
+  }
+  if (hours >= 1 || minutes >= 1) {
+    parts.push(`${minutes}m`);
+  }
+  parts.push(`${seconds}s`);
+  return parts.join(' ');
+}

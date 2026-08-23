@@ -9,6 +9,7 @@ import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useWordsAvailabilityLabel } from '../hooks/useWordsAvailabilityLabel';
 import { colors, layout, typography } from '../theme';
 
 // Figma phone Home Content → Spacer.
@@ -40,6 +41,8 @@ export default function HomeScreen({
   wordsToReview = 0,
   canStart = false,
   canContinue = false,
+  nextReviewAt = null,
+  hasNewWordsAtMidnight = false,
   currentLevel,
   levelCompleted,
   onLevelCompletedConfirm,
@@ -49,6 +52,11 @@ export default function HomeScreen({
   const isTablet = useIsTablet();
   const fontScale = useFontScale();
   const dialog = levelCompletedCopy(levelCompleted, currentLevel);
+  const availabilityLabel = useWordsAvailabilityLabel({
+    canStart,
+    nextReviewAt,
+    hasNewWordsAtMidnight,
+  });
   const navHeight = NAV_HEIGHT * fontScale;
 
   // Nav sits 50px from the bottom on tablet (Figma) and insets+16 on phone;
@@ -90,11 +98,18 @@ export default function HomeScreen({
             <MetricRow label="New Words" value={String(newWords)} />
             <MetricRow label="Words to Review" value={String(wordsToReview)} />
           </View>
-          <Button
-            title={canContinue ? 'Continue' : 'Start'}
-            onPress={onStart}
-            disabled={!canStart}
-          />
+          <View style={styles.startGroup}>
+            {availabilityLabel != null ? (
+              <AccessibleText style={styles.availabilityLabel}>
+                {availabilityLabel}
+              </AccessibleText>
+            ) : null}
+            <Button
+              title={canContinue ? 'Continue' : 'Start'}
+              onPress={onStart}
+              disabled={!canStart}
+            />
+          </View>
         </View>
       </ScrollView>
       <BottomGradient bottom={navBottom} />
@@ -149,5 +164,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: 32,
     width: '100%',
+  },
+  startGroup: {
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  availabilityLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

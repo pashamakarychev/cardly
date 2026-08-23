@@ -28,7 +28,9 @@ import {
   addToLearningProgress,
   advanceActivePosition,
   decreaseInterval,
+  countUndisplayedNewWords,
   getDueLearningWords,
+  getNearestNextReviewAt,
   getNewWordsRemainingToday,
   getNextStep,
   getActiveWordsCounts,
@@ -105,22 +107,34 @@ function AppContent() {
     wordsToReview: 0,
     activeWords: 0,
     completedSteps: 0,
+    nextReviewAt: null,
+    hasNewWordsAtMidnight: false,
   });
   const [levelCompleted, setLevelCompleted] = useState(null);
 
   const refreshHomeStats = useCallback(async () => {
-    const [newWordsRemaining, dueWords, activeCounts, completedSteps] =
-      await Promise.all([
-        getNewWordsRemainingToday(db),
-        getDueLearningWords(db),
-        getActiveWordsCounts(db),
-        getCompletedSteps(db),
-      ]);
+    const [
+      newWordsRemaining,
+      dueWords,
+      activeCounts,
+      completedSteps,
+      nextReviewAt,
+      undisplayedNewWords,
+    ] = await Promise.all([
+      getNewWordsRemainingToday(db),
+      getDueLearningWords(db),
+      getActiveWordsCounts(db),
+      getCompletedSteps(db),
+      getNearestNextReviewAt(db),
+      countUndisplayedNewWords(db),
+    ]);
     setHomeStats({
       newWords: newWordsRemaining + activeCounts.new,
       wordsToReview: dueWords.length + activeCounts.review,
       activeWords: activeCounts.total,
       completedSteps,
+      nextReviewAt,
+      hasNewWordsAtMidnight: undisplayedNewWords > 0,
     });
   }, [db]);
 
@@ -539,6 +553,8 @@ function AppContent() {
                     homeStats.wordsToReview > 0 ||
                     homeStats.activeWords > 0,
                   canContinue: homeStats.completedSteps > 0,
+                  nextReviewAt: homeStats.nextReviewAt,
+                  hasNewWordsAtMidnight: homeStats.hasNewWordsAtMidnight,
                   currentLevel: preferences?.level,
                   levelCompleted,
                   onLevelCompletedConfirm: handleLevelCompletedConfirm,
