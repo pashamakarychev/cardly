@@ -74,29 +74,28 @@ export default function SessionScreen({
     onTransitionEnd?.();
   };
 
-  // Start the card swap on tap, before React re-renders, so the native-driver
-  // animation is already running. Prefetch still runs in parallel so the
-  // revealed card can pick up the next word.
+  // Prefetch decides whether another card follows. The last word skips the
+  // swap and advances straight to session complete.
   const resolveRound = (action) => {
     const pending = Promise.resolve(action?.());
+    setResolved(true);
+
+    const startOrFinish = (shouldAnimate) => {
+      if (shouldAnimate === false) {
+        handleTransitionEnd();
+        return;
+      }
+      cardStackRef.current?.playTransition();
+    };
 
     if (!screenReaderEnabled) {
-      cardStackRef.current?.playTransition();
-      setResolved(true);
+      pending.then(startOrFinish);
       return;
     }
 
-    setResolved(true);
-
     triggerTimeoutRef.current = setTimeout(() => {
       triggerTimeoutRef.current = null;
-      pending.then((shouldAnimate) => {
-        if (shouldAnimate === false) {
-          handleTransitionEnd();
-          return;
-        }
-        cardStackRef.current?.playTransition();
-      });
+      pending.then(startOrFinish);
     }, SCREEN_READER_FEEDBACK_DELAY_MS);
   };
 
