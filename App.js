@@ -62,7 +62,17 @@ import {
 } from './navigation/transitions';
 import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
 import { useIsTablet } from './hooks/useIsTablet';
-import { getSession, signInWithEmail, signUpWithEmail } from './lib/auth';
+import * as Linking from 'expo-linking';
+
+import {
+  createSessionFromUrl,
+  getSession,
+  isPasswordRecoveryUrl,
+  requestPasswordReset,
+  signInWithEmail,
+  signUpWithEmail,
+  updatePassword,
+} from './lib/auth';
 import LoginScreen from './screens/LoginScreen';
 import MainTabsScreen from './screens/MainTabsScreen';
 import NewPasswordScreen from './screens/NewPasswordScreen';
@@ -197,6 +207,14 @@ function AppContent() {
   useEffect(() => {
     async function loadInitialScreen() {
       try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl) {
+          const recovered = await createSessionFromUrl(initialUrl);
+          if (recovered != null && isPasswordRecoveryUrl(initialUrl)) {
+            setInitialRoute('NewPassword');
+            return;
+          }
+        }
         const session = await getSession();
         if (session == null) {
           setInitialRoute('Login');
@@ -251,6 +269,20 @@ function AppContent() {
       navigationRef.navigate(routeName);
     }
   };
+
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', async ({ url }) => {
+      try {
+        const session = await createSessionFromUrl(url);
+        if (session != null && isPasswordRecoveryUrl(url)) {
+          navigateTo('NewPassword');
+        }
+      } catch {
+        // Ignore links that are not a valid password-recovery session.
+      }
+    });
+    return () => subscription.remove();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rounds within a session update state on the already-mounted Session
   // screen; only navigate when coming from another screen.
@@ -560,6 +592,9 @@ function AppContent() {
                 onSignUpPress={() => {
                   navigateTo('SignUp');
                 }}
+                onForgotPasswordPress={() => {
+                  navigateTo('ResetPassword');
+                }}
               />
             )}
           </Stack.Screen>
@@ -583,13 +618,24 @@ function AppContent() {
             name="ResetPassword"
             options={{ title: 'Reset password' }}
           >
-            {() => <ResetPasswordScreen />}
+            {() => (
+              <ResetPasswordScreen
+                onSendResetLink={requestPasswordReset}
+              />
+            )}
           </Stack.Screen>
           <Stack.Screen
             name="NewPassword"
             options={{ title: 'Create a new password' }}
           >
-            {() => <NewPasswordScreen />}
+            {() => (
+              <NewPasswordScreen
+                onResetPassword={async (password) => {
+                  await updatePassword(password);
+                  await enterAuthenticatedApp({ replace: true });
+                }}
+              />
+            )}
           </Stack.Screen>
           <Stack.Screen
             name="Onboarding"

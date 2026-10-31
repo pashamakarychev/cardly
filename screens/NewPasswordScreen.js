@@ -18,13 +18,38 @@ import { colors, layout, typography } from '../theme';
 const PHONE_SPACER_HEIGHT = 137;
 const NEW_PASSWORD_CONTENT_WIDTH = 375;
 
-export default function NewPasswordScreen() {
+export default function NewPasswordScreen({ onResetPassword }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (submitting) {
+      return;
+    }
+    if (password === '' || confirmPassword === '') {
+      setError('Enter and confirm your new password.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onResetPassword?.(password);
+    } catch (authError) {
+      setError(authError?.message ?? 'Could not reset password.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const paddingTop = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
@@ -92,7 +117,15 @@ export default function NewPasswordScreen() {
                     : 'Show confirm password'
                 }
               />
-              <Button title="Reset password" size="medium" onPress={() => {}} />
+              <Button
+                title="Reset password"
+                size="medium"
+                disabled={submitting}
+                onPress={handleResetPassword}
+              />
+              {error != null ? (
+                <AccessibleText style={styles.error}>{error}</AccessibleText>
+              ) : null}
             </View>
           </View>
         </ScrollView>
@@ -140,5 +173,11 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h2,
     color: colors.textPrimary,
+  },
+  error: {
+    ...typography.body,
+    color: colors.errorStrong,
+    textAlign: 'center',
+    width: '100%',
   },
 });

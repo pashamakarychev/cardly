@@ -17,10 +17,35 @@ import { colors, layout, typography } from '../theme';
 const PHONE_SPACER_HEIGHT = 137;
 const RESET_CONTENT_WIDTH = 375;
 
-export default function ResetPasswordScreen() {
+export default function ResetPasswordScreen({ onSendResetLink }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const [email, setEmail] = useState('');
+  const [error, setError] = useState(null);
+  const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSendResetLink = async () => {
+    if (submitting) {
+      return;
+    }
+    if (email.trim() === '') {
+      setError('Enter your email address.');
+      setSent(false);
+      return;
+    }
+    setError(null);
+    setSent(false);
+    setSubmitting(true);
+    try {
+      await onSendResetLink?.(email);
+      setSent(true);
+    } catch (authError) {
+      setError(authError?.message ?? 'Could not send a reset link.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const paddingTop = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
@@ -67,7 +92,20 @@ export default function ResetPasswordScreen() {
                 autoComplete="email"
                 textContentType="emailAddress"
               />
-              <Button title="Send reset link" size="medium" onPress={() => {}} />
+              <Button
+                title="Send reset link"
+                size="medium"
+                disabled={submitting}
+                onPress={handleSendResetLink}
+              />
+              {error != null ? (
+                <AccessibleText style={styles.error}>{error}</AccessibleText>
+              ) : null}
+              {sent ? (
+                <AccessibleText style={styles.success}>
+                  If an account exists for that email, we sent a reset link.
+                </AccessibleText>
+              ) : null}
             </View>
           </View>
         </ScrollView>
@@ -117,6 +155,18 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   description: {
+    ...typography.body,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    width: '100%',
+  },
+  error: {
+    ...typography.body,
+    color: colors.errorStrong,
+    textAlign: 'center',
+    width: '100%',
+  },
+  success: {
     ...typography.body,
     color: colors.textPrimary,
     textAlign: 'center',

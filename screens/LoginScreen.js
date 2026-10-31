@@ -22,7 +22,7 @@ const PHONE_SPACER_HEIGHT = 137;
 const LOGIN_CONTENT_WIDTH = 375;
 const APP_ICON_SIZE = 64;
 
-export default function LoginScreen({ onLogIn, onSignUpPress }) {
+export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPress }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const [email, setEmail] = useState('');
@@ -126,7 +126,7 @@ export default function LoginScreen({ onLogIn, onSignUpPress }) {
                 <AccessibleText style={styles.error}>{error}</AccessibleText>
               ) : null}
               <Pressable
-                onPress={() => {}}
+                onPress={onForgotPasswordPress}
                 accessibilityRole="button"
                 accessibilityLabel="Forgot password?"
               >

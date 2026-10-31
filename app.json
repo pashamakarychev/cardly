@@ -2,6 +2,7 @@
   "expo": {
     "name": "Cardly",
     "slug": "Cardly",
+    "scheme": "cardly",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
