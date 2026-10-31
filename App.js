@@ -62,8 +62,12 @@ import {
 } from './navigation/transitions';
 import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
 import { useIsTablet } from './hooks/useIsTablet';
+import LoginScreen from './screens/LoginScreen';
 import MainTabsScreen from './screens/MainTabsScreen';
+import NewPasswordScreen from './screens/NewPasswordScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import ResetPasswordScreen from './screens/ResetPasswordScreen';
+import SignUpScreen from './screens/SignUpScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
 import { colors, layout } from './theme';
@@ -163,12 +167,9 @@ function AppContent() {
           wordsPerDay: String(settings.new_words_per_day),
         });
         await loadLevelCompleted();
-        setActiveTab('home');
-        setInitialRoute(MAIN_ROUTE);
-        return;
       }
 
-      setInitialRoute('Onboarding');
+      setInitialRoute('NewPassword');
     }
 
     loadInitialScreen();
@@ -510,6 +511,30 @@ function AppContent() {
             transitionSpec: slideTransitionSpec,
           }}
         >
+          <Stack.Screen
+            name="Login"
+            options={{ title: 'Welcome back!' }}
+          >
+            {() => <LoginScreen />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="SignUp"
+            options={{ title: 'Create an account' }}
+          >
+            {() => <SignUpScreen />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="ResetPassword"
+            options={{ title: 'Reset password' }}
+          >
+            {() => <ResetPasswordScreen />}
+          </Stack.Screen>
+          <Stack.Screen
+            name="NewPassword"
+            options={{ title: 'Create a new password' }}
+          >
+            {() => <NewPasswordScreen />}
+          </Stack.Screen>
           <Stack.Screen
             name="Onboarding"
             options={{ title: "Let's get started" }}

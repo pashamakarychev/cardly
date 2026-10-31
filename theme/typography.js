@@ -41,6 +41,11 @@ export const typography = {
     fontSize: 14,
     lineHeight: lineHeight(14),
   },
+  body: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 16,
+    lineHeight: lineHeight(16),
+  },
   button: {
     fontFamily: fontFamilies.medium,
     fontSize: 16,

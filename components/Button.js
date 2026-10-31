@@ -6,7 +6,10 @@ import { useDelayedPressed } from './useDelayedPressed';
 import { useFontScale } from '../hooks/useFontScale';
 import { colors, typography } from '../theme';
 
-const BUTTON_HEIGHT = 60;
+const BUTTON_HEIGHTS = {
+  large: 60,
+  medium: 52,
+};
 
 function feedbackLabel(status) {
   if (status === 'correct') {
@@ -23,6 +26,7 @@ export default function Button({
   title,
   onPress,
   variant = 'primary',
+  size = 'large',
   status,
   disabled = false,
   style,
@@ -50,7 +54,7 @@ export default function Button({
       }}
       style={[
         styles.button,
-        { height: BUTTON_HEIGHT * fontScale },
+        { height: (BUTTON_HEIGHTS[size] ?? BUTTON_HEIGHTS.large) * fontScale },
         secondary && styles.buttonSecondary,
         disabled && (secondary ? styles.secondaryDisabled : styles.primaryDisabled),
         !disabled &&

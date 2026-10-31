@@ -32,6 +32,14 @@ export function tabAnnouncement(tabKey) {
 
 export function routeAnnouncement(routeName) {
   switch (routeName) {
+    case 'Login':
+      return 'Welcome back!';
+    case 'SignUp':
+      return 'Create an account';
+    case 'ResetPassword':
+      return 'Reset password';
+    case 'NewPassword':
+      return 'Create a new password';
     case 'Onboarding':
       return "Let's get started";
     case 'Session':
