@@ -82,7 +82,7 @@ export default function SignUpScreen({ onSignUp, onLogInPress }) {
             {!isTablet && <View style={styles.spacer} />}
             <View style={styles.logoWrap}>
               <Image
-                source={require('../assets/icon.png')}
+                source={require('../images/app-icon.png')}
                 style={styles.logo}
                 accessibilityIgnoresInvertColors
               />
