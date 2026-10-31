@@ -62,6 +62,7 @@ import {
 } from './navigation/transitions';
 import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
 import { useIsTablet } from './hooks/useIsTablet';
+import { getSession, signInWithEmail, signUpWithEmail } from './lib/auth';
 import LoginScreen from './screens/LoginScreen';
 import MainTabsScreen from './screens/MainTabsScreen';
 import NewPasswordScreen from './screens/NewPasswordScreen';
@@ -155,25 +156,60 @@ function AppContent() {
     setLevelCompleted(await getLevelCompleted(db));
   };
 
+  const applySettings = async (settings) => {
+    if (settings?.onboarding_completed !== 1) {
+      return false;
+    }
+    setPreferences({
+      speaks: settings.native_language,
+      learning: settings.learning_language,
+      level: settings.level,
+      wordsPerDay: String(settings.new_words_per_day),
+    });
+    await loadLevelCompleted();
+    return true;
+  };
+
+  const enterAuthenticatedApp = async ({ replace = false } = {}) => {
+    const settings = await getSettings(db);
+    if (await applySettings(settings)) {
+      setActiveTab('home');
+      if (replace) {
+        navigationRef.reset({
+          index: 0,
+          routes: [{ name: MAIN_ROUTE }],
+        });
+        return;
+      }
+      setInitialRoute(MAIN_ROUTE);
+      return;
+    }
+    if (replace) {
+      navigationRef.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      });
+      return;
+    }
+    setInitialRoute('Onboarding');
+  };
+
   useEffect(() => {
     async function loadInitialScreen() {
-      const settings = await getSettings(db);
-
-      if (settings?.onboarding_completed === 1) {
-        setPreferences({
-          speaks: settings.native_language,
-          learning: settings.learning_language,
-          level: settings.level,
-          wordsPerDay: String(settings.new_words_per_day),
-        });
-        await loadLevelCompleted();
+      try {
+        const session = await getSession();
+        if (session == null) {
+          setInitialRoute('Login');
+          return;
+        }
+        await enterAuthenticatedApp();
+      } catch {
+        setInitialRoute('Login');
       }
-
-      setInitialRoute('NewPassword');
     }
 
     loadInitialScreen();
-  }, [db]);
+  }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Next step prepared while the answer feedback and card transition play,
   // so the round can advance in the same batch as the card slot swap.
@@ -515,13 +551,33 @@ function AppContent() {
             name="Login"
             options={{ title: 'Welcome back!' }}
           >
-            {() => <LoginScreen />}
+            {() => (
+              <LoginScreen
+                onLogIn={async (email, password) => {
+                  await signInWithEmail(email, password);
+                  await enterAuthenticatedApp({ replace: true });
+                }}
+                onSignUpPress={() => {
+                  navigateTo('SignUp');
+                }}
+              />
+            )}
           </Stack.Screen>
           <Stack.Screen
             name="SignUp"
             options={{ title: 'Create an account' }}
           >
-            {() => <SignUpScreen />}
+            {() => (
+              <SignUpScreen
+                onSignUp={async (email, password) => {
+                  await signUpWithEmail(email, password);
+                  await enterAuthenticatedApp({ replace: true });
+                }}
+                onLogInPress={() => {
+                  navigateTo('Login', { from: 'left' });
+                }}
+              />
+            )}
           </Stack.Screen>
           <Stack.Screen
             name="ResetPassword"

@@ -22,12 +22,33 @@ const PHONE_SPACER_HEIGHT = 137;
 const SIGN_UP_CONTENT_WIDTH = 375;
 const APP_ICON_SIZE = 64;
 
-export default function SignUpScreen() {
+export default function SignUpScreen({ onSignUp, onLogInPress }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSignUp = async () => {
+    if (submitting) {
+      return;
+    }
+    if (email.trim() === '' || password === '') {
+      setError('Enter your email and password.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onSignUp?.(email, password);
+    } catch (authError) {
+      setError(authError?.message ?? 'Could not create an account.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const paddingTop = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
@@ -94,12 +115,20 @@ export default function SignUpScreen() {
                     passwordVisible ? 'Hide password' : 'Show password'
                   }
                 />
-                <Button title="Sign up" size="medium" onPress={() => {}} />
+                <Button
+                  title="Sign up"
+                  size="medium"
+                  disabled={submitting}
+                  onPress={handleSignUp}
+                />
               </View>
+              {error != null ? (
+                <AccessibleText style={styles.error}>{error}</AccessibleText>
+              ) : null}
               <View style={styles.loginRow}>
                 <Text style={styles.body}>Already have an account? </Text>
                 <Pressable
-                  onPress={() => {}}
+                  onPress={onLogInPress}
                   accessibilityRole="button"
                   accessibilityLabel="Log in"
                 >
@@ -171,6 +200,12 @@ const styles = StyleSheet.create({
   body: {
     ...typography.body,
     color: colors.textPrimary,
+  },
+  error: {
+    ...typography.body,
+    color: colors.errorStrong,
+    textAlign: 'center',
+    width: '100%',
   },
   loginRow: {
     alignItems: 'center',

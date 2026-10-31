@@ -22,12 +22,33 @@ const PHONE_SPACER_HEIGHT = 137;
 const LOGIN_CONTENT_WIDTH = 375;
 const APP_ICON_SIZE = 64;
 
-export default function LoginScreen() {
+export default function LoginScreen({ onLogIn, onSignUpPress }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleLogIn = async () => {
+    if (submitting) {
+      return;
+    }
+    if (email.trim() === '' || password === '') {
+      setError('Enter your email and password.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onLogIn?.(email, password);
+    } catch (authError) {
+      setError(authError?.message ?? 'Could not log in.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const paddingTop = isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
@@ -94,8 +115,16 @@ export default function LoginScreen() {
                     passwordVisible ? 'Hide password' : 'Show password'
                   }
                 />
-                <Button title="Log in" size="medium" onPress={() => {}} />
+                <Button
+                  title="Log in"
+                  size="medium"
+                  disabled={submitting}
+                  onPress={handleLogIn}
+                />
               </View>
+              {error != null ? (
+                <AccessibleText style={styles.error}>{error}</AccessibleText>
+              ) : null}
               <Pressable
                 onPress={() => {}}
                 accessibilityRole="button"
@@ -106,7 +135,7 @@ export default function LoginScreen() {
               <View style={styles.signupRow}>
                 <Text style={styles.body}>Don't have an account? </Text>
                 <Pressable
-                  onPress={() => {}}
+                  onPress={onSignUpPress}
                   accessibilityRole="button"
                   accessibilityLabel="Sign up"
                 >
@@ -178,6 +207,12 @@ const styles = StyleSheet.create({
   body: {
     ...typography.body,
     color: colors.textPrimary,
+  },
+  error: {
+    ...typography.body,
+    color: colors.errorStrong,
+    textAlign: 'center',
+    width: '100%',
   },
   signupRow: {
     alignItems: 'center',
