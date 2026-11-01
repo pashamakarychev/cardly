@@ -25,27 +25,32 @@ export default function NewPasswordScreen({ onResetPassword }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const [error, setError] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
+  const [confirmError, setConfirmError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleResetPassword = async () => {
     if (submitting) {
       return;
     }
-    if (password === '' || confirmPassword === '') {
-      setError('Enter and confirm your new password.');
+    const nextPasswordError =
+      password === '' ? 'Enter your new password.' : null;
+    const nextConfirmError =
+      confirmPassword === ''
+        ? 'Confirm your new password.'
+        : password !== '' && password !== confirmPassword
+          ? 'Passwords do not match.'
+          : null;
+    setPasswordError(nextPasswordError);
+    setConfirmError(nextConfirmError);
+    if (nextPasswordError != null || nextConfirmError != null) {
       return;
     }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    setError(null);
     setSubmitting(true);
     try {
       await onResetPassword?.(password);
     } catch (authError) {
-      setError(authError?.message ?? 'Could not reset password.');
+      setPasswordError(authError?.message ?? 'Could not reset password.');
     } finally {
       setSubmitting(false);
     }
@@ -87,7 +92,10 @@ export default function NewPasswordScreen({ onResetPassword }) {
               </AccessibleText>
               <TextField
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setPasswordError(null);
+                }}
                 placeholder="New password"
                 secureTextEntry={!passwordVisible}
                 autoComplete="new-password"
@@ -99,10 +107,14 @@ export default function NewPasswordScreen({ onResetPassword }) {
                 rightIconAccessibilityLabel={
                   passwordVisible ? 'Hide password' : 'Show password'
                 }
+                error={passwordError}
               />
               <TextField
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(value) => {
+                  setConfirmPassword(value);
+                  setConfirmError(null);
+                }}
                 placeholder="Confirm password"
                 secureTextEntry={!confirmVisible}
                 autoComplete="new-password"
@@ -116,6 +128,7 @@ export default function NewPasswordScreen({ onResetPassword }) {
                     ? 'Hide confirm password'
                     : 'Show confirm password'
                 }
+                error={confirmError}
               />
               <Button
                 title="Reset password"
@@ -123,9 +136,6 @@ export default function NewPasswordScreen({ onResetPassword }) {
                 disabled={submitting}
                 onPress={handleResetPassword}
               />
-              {error != null ? (
-                <AccessibleText style={styles.error}>{error}</AccessibleText>
-              ) : null}
             </View>
           </View>
         </ScrollView>
@@ -173,11 +183,5 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h2,
     color: colors.textPrimary,
-  },
-  error: {
-    ...typography.body,
-    color: colors.errorStrong,
-    textAlign: 'center',
-    width: '100%',
   },
 });

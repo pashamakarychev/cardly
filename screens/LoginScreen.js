@@ -28,23 +28,26 @@ export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [error, setError] = useState(null);
+  const [emailError, setEmailError] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleLogIn = async () => {
     if (submitting) {
       return;
     }
-    if (email.trim() === '' || password === '') {
-      setError('Enter your email and password.');
+    const nextEmailError = email.trim() === '' ? 'Enter your email.' : null;
+    const nextPasswordError = password === '' ? 'Enter your password.' : null;
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    if (nextEmailError != null || nextPasswordError != null) {
       return;
     }
-    setError(null);
     setSubmitting(true);
     try {
       await onLogIn?.(email, password);
     } catch (authError) {
-      setError(authError?.message ?? 'Could not log in.');
+      setPasswordError(authError?.message ?? 'Could not log in.');
     } finally {
       setSubmitting(false);
     }
@@ -94,15 +97,22 @@ export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPr
               <View style={styles.fields}>
                 <TextField
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    setEmailError(null);
+                  }}
                   placeholder="Email"
                   keyboardType="email-address"
                   autoComplete="email"
                   textContentType="emailAddress"
+                  error={emailError}
                 />
                 <TextField
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    setPasswordError(null);
+                  }}
                   placeholder="Password"
                   secureTextEntry={!passwordVisible}
                   autoComplete="password"
@@ -114,6 +124,7 @@ export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPr
                   rightIconAccessibilityLabel={
                     passwordVisible ? 'Hide password' : 'Show password'
                   }
+                  error={passwordError}
                 />
                 <Button
                   title="Log in"
@@ -122,9 +133,6 @@ export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPr
                   onPress={handleLogIn}
                 />
               </View>
-              {error != null ? (
-                <AccessibleText style={styles.error}>{error}</AccessibleText>
-              ) : null}
               <Pressable
                 onPress={onForgotPasswordPress}
                 accessibilityRole="button"
@@ -207,12 +215,6 @@ const styles = StyleSheet.create({
   body: {
     ...typography.body,
     color: colors.textPrimary,
-  },
-  error: {
-    ...typography.body,
-    color: colors.errorStrong,
-    textAlign: 'center',
-    width: '100%',
   },
   signupRow: {
     alignItems: 'center',

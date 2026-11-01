@@ -86,11 +86,21 @@ export default function ResetPasswordScreen({ onSendResetLink }) {
               </AccessibleText>
               <TextField
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  setError(null);
+                  setSent(false);
+                }}
                 placeholder="Email"
                 keyboardType="email-address"
                 autoComplete="email"
                 textContentType="emailAddress"
+                error={error}
+                helperText={
+                  sent
+                    ? 'If an account exists for that email, we sent a reset link.'
+                    : undefined
+                }
               />
               <Button
                 title="Send reset link"
@@ -98,14 +108,6 @@ export default function ResetPasswordScreen({ onSendResetLink }) {
                 disabled={submitting}
                 onPress={handleSendResetLink}
               />
-              {error != null ? (
-                <AccessibleText style={styles.error}>{error}</AccessibleText>
-              ) : null}
-              {sent ? (
-                <AccessibleText style={styles.success}>
-                  If an account exists for that email, we sent a reset link.
-                </AccessibleText>
-              ) : null}
             </View>
           </View>
         </ScrollView>
@@ -155,18 +157,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   description: {
-    ...typography.body,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    width: '100%',
-  },
-  error: {
-    ...typography.body,
-    color: colors.errorStrong,
-    textAlign: 'center',
-    width: '100%',
-  },
-  success: {
     ...typography.body,
     color: colors.textPrimary,
     textAlign: 'center',
