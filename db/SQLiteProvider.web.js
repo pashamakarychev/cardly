@@ -53,18 +53,26 @@ async function createDatabase(databaseName, assetSource) {
     savedDatabase == null
       ? await loadBundledDatabase(assetSource?.assetId)
       : new Uint8Array(savedDatabase);
-  const database = new SQL.Database(databaseData);
+  let database = new SQL.Database(databaseData);
 
-  let persistChain = Promise.resolve();
-  const persist = () => {
-    persistChain = persistChain.then(async () => {
-      await storage.put(DATABASE_STORE, database.export(), databaseName);
-    });
-    return persistChain;
+  // sql.js export reopens its connection and resets connection PRAGMAs.
+  const exportDatabase = (connection) => {
+    const foreignKeys = connection.exec('PRAGMA foreign_keys')[0]?.values[0][0] ?? 0;
+    const bytes = connection.export();
+    connection.run(`PRAGMA foreign_keys = ${foreignKeys ? 'ON' : 'OFF'}`);
+    return bytes;
+  };
+  const persist = () => storage.put(DATABASE_STORE, exportDatabase(database), databaseName);
+
+  let writeChain = Promise.resolve();
+  const scheduleWrite = (task) => {
+    const pending = writeChain.then(task);
+    writeChain = pending.catch(() => {});
+    return pending;
   };
 
-  const execute = (source, params, firstOnly) => {
-    const statement = database.prepare(source);
+  const execute = (connection, source, params, firstOnly) => {
+    const statement = connection.prepare(source);
     try {
       statement.bind(params);
       const rows = [];
@@ -80,29 +88,72 @@ async function createDatabase(databaseName, assetSource) {
     }
   };
 
+  const run = (connection, source, params) => {
+    connection.run(source, normalizeParams(params));
+    return {
+      changes: connection.getRowsModified(),
+      lastInsertRowId:
+        connection.exec('SELECT last_insert_rowid() AS id')[0]?.values?.[0]?.[0] ?? 0,
+    };
+  };
+
   return {
     async execAsync(source) {
-      database.run(source);
-      await persist();
+      await scheduleWrite(async () => {
+        database.run(source);
+        await persist();
+      });
     },
     async runAsync(source, ...params) {
-      database.run(source, normalizeParams(params));
-      const changes = database.getRowsModified();
-      const lastInsertRowId =
-        database.exec('SELECT last_insert_rowid() AS id')[0]?.values?.[0]?.[0] ?? 0;
-      await persist();
-      return { changes, lastInsertRowId };
+      return scheduleWrite(async () => {
+        const result = run(database, source, params);
+        await persist();
+        return result;
+      });
     },
     async getAllAsync(source, ...params) {
-      return execute(source, normalizeParams(params), false);
+      return execute(database, source, normalizeParams(params), false);
     },
     async getFirstAsync(source, ...params) {
-      return execute(source, normalizeParams(params), true);
+      return execute(database, source, normalizeParams(params), true);
+    },
+    async withExclusiveTransactionAsync(task) {
+      await scheduleWrite(async () => {
+        // Stage the entire transaction on a separate connection. Readers see
+        // committed data, and IndexedDB never receives a partial transaction.
+        const foreignKeys = database.exec('PRAGMA foreign_keys')[0]?.values[0][0] ?? 0;
+        const staged = new SQL.Database(exportDatabase(database));
+        staged.run(`PRAGMA foreign_keys = ${foreignKeys ? 'ON' : 'OFF'}`);
+        try {
+          staged.run('BEGIN');
+          await task({
+            async execAsync(source) { staged.run(source); },
+            async runAsync(source, ...params) { return run(staged, source, params); },
+            async getAllAsync(source, ...params) {
+              return execute(staged, source, normalizeParams(params), false);
+            },
+            async getFirstAsync(source, ...params) {
+              return execute(staged, source, normalizeParams(params), true);
+            },
+          });
+          staged.run('COMMIT');
+          await storage.put(DATABASE_STORE, exportDatabase(staged), databaseName);
+        } catch (error) {
+          // Discarding the staged connection also rolls back on write/storage failure.
+          staged.close();
+          throw error;
+        }
+        const previous = database;
+        database = staged;
+        previous.close();
+      });
     },
     async closeAsync() {
-      await persist();
-      database.close();
-      storage.close();
+      await scheduleWrite(async () => {
+        await persist();
+        database.close();
+        storage.close();
+      });
     },
   };
 }

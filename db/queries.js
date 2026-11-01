@@ -6,6 +6,47 @@ export async function configureConnection(db) {
   await db.execAsync( 'PRAGMA journal_mode = WAL');
 }
 
+export async function withWriteTransaction(db, task) {
+  if (typeof db.withTransactionAsync === 'function') {
+    // Repository writes are serialized. Reuse the configured native connection
+    // so its foreign_keys setting also applies inside the transaction.
+    await db.withTransactionAsync(() => task(db));
+  } else {
+    // The web adapter stages writes on an isolated SQLite connection.
+    await db.withExclusiveTransactionAsync(task);
+  }
+}
+
+// Only repository-owned tables may be used as SQL identifiers here.
+const SYNC_KEYS = {
+  settings: ['id'],
+  session: ['key', 'language'],
+  active_words: ['word_id', 'language'],
+  learning_progress: ['word_id', 'language'],
+};
+
+export async function selectSyncRecord(db, tableName, identity) {
+  const keys = SYNC_KEYS[tableName];
+  if (!keys) {
+    throw new Error(`Unsupported sync table: ${tableName}`);
+  }
+  return db.getFirstAsync(
+    `SELECT * FROM ${tableName} WHERE ${keys.map((key) => `${key} = ?`).join(' AND ')}`,
+    ...keys.map((key) => identity[key])
+  );
+}
+
+export async function insertSyncQueueEntry(db, tableName, recordId, operation, payload) {
+  await db.runAsync(
+    `INSERT INTO sync_queue (id, table_name, record_id, operation, payload)
+     VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?)`,
+    tableName,
+    recordId,
+    operation,
+    JSON.stringify(payload)
+  );
+}
+
 export async function getSettings(db) {
   return db.getFirstAsync( 
     `

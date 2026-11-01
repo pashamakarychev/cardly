@@ -5,6 +5,33 @@ import { LANGUAGE_CODES } from '../constants/preferences';
 import * as cache from './cache';
 import * as queries from './queries';
 
+const writeChains = new WeakMap();
+
+function writeWithSync(db, tableName, identity, write) {
+  const previous = writeChains.get(db) ?? Promise.resolve();
+  const pending = previous.then(() => queries.withWriteTransaction(db, async (transaction) => {
+    const before = await queries.selectSyncRecord(transaction, tableName, identity);
+    await write(transaction);
+    const after = await queries.selectSyncRecord(transaction, tableName, identity);
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      return;
+    }
+
+    const operation = before == null ? 'insert' : after == null ? 'delete' : 'update';
+    // Session rows have a composite key. Language also stays in the payload
+    // for word records so the receiver can scope every operation correctly.
+    const recordId = tableName === 'session'
+      ? JSON.stringify([identity.key, identity.language])
+      : String(identity.id ?? identity.word_id);
+    await queries.insertSyncQueueEntry(
+      transaction, tableName, recordId, operation, after ?? before
+    );
+  }));
+  // A failed write must not prevent later transactions from running.
+  writeChains.set(db, pending.catch(() => {}));
+  return pending;
+}
+
 export async function configureConnection(db) {
   return queries.configureConnection(db);
 }
@@ -28,7 +55,8 @@ export async function getLearningLanguage(db) {
 }
 
 export async function completeOnboarding(db, values) {
-  await queries.completeOnboarding(db, values);
+  await writeWithSync(db, 'settings', { id: 1 }, (transaction) =>
+    queries.completeOnboarding(transaction, values));
   cache.setSettingsCache({
     native_language: values.nativeLanguage,
     learning_language: values.learningLanguage,
@@ -40,7 +68,8 @@ export async function completeOnboarding(db, values) {
 }
 
 export async function updateSettings(db, values) {
-  await queries.updateSettings(db, values);
+  await writeWithSync(db, 'settings', { id: 1 }, (transaction) =>
+    queries.updateSettings(transaction, values));
 
   const patch = {};
   if (values.nativeLanguage != null) {
@@ -180,13 +209,15 @@ export async function getSessionValue(db, key, language) {
 export async function setSessionValue(db, key, value, language) {
   await ensureSessionCache(db, language);
   cache.setSessionCacheValue(language, key, value);
-  persist(() => queries.setSessionValue(db, key, value, language));
+  persist(() => writeWithSync(db, 'session', { key, language }, (transaction) =>
+    queries.setSessionValue(transaction, key, value, language)));
 }
 
 export async function deleteSessionValue(db, key, language) {
   await ensureSessionCache(db, language);
   cache.deleteSessionCacheValue(language, key);
-  persist(() => queries.deleteSessionValue(db, key, language));
+  persist(() => writeWithSync(db, 'session', { key, language }, (transaction) =>
+    queries.deleteSessionValue(transaction, key, language)));
 }
 
 export async function getLearningProgressIntervalIndex(db, wordId, language) {
@@ -214,15 +245,15 @@ export async function updateLearningProgressReview(
     intervalIndex,
     nextReviewAt
   );
-  persist(() =>
+  persist(() => writeWithSync(db, 'learning_progress', { word_id: wordId, language }, (transaction) =>
     queries.updateLearningProgressReview(
-      db,
+      transaction,
       wordId,
       language,
       intervalIndex,
       nextReviewAt
     )
-  );
+  ));
 }
 
 export async function upsertLearningProgress(
@@ -248,16 +279,16 @@ export async function upsertLearningProgress(
     word_language: existing?.word_language ?? word?.language,
     level: existing?.level ?? word?.level,
   });
-  persist(() =>
+  persist(() => writeWithSync(db, 'learning_progress', { word_id: wordId, language }, (transaction) =>
     queries.upsertLearningProgress(
-      db,
+      transaction,
       wordId,
       state,
       nextReviewAt,
       intervalIndex,
       language
     )
-  );
+  ));
 }
 
 export async function selectDueLearningWords(db, language, state, now) {
@@ -356,7 +387,8 @@ export async function selectOccupiedActivePosition(db, position, language) {
 export async function incrementActiveWordStreak(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
   cache.incrementActiveWordStreakCache(language, wordId);
-  persist(() => queries.incrementActiveWordStreak(db, wordId, language));
+  persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
+    queries.incrementActiveWordStreak(transaction, wordId, language)));
 }
 
 export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
@@ -376,13 +408,15 @@ export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
 export async function deleteActiveWord(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
   cache.deleteActiveWordCache(language, wordId);
-  persist(() => queries.deleteActiveWord(db, wordId, language));
+  persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
+    queries.deleteActiveWord(transaction, wordId, language)));
 }
 
 export async function resetActiveWordStreak(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
   cache.resetActiveWordStreakCache(language, wordId);
-  persist(() => queries.resetActiveWordStreak(db, wordId, language));
+  persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
+    queries.resetActiveWordStreak(transaction, wordId, language)));
 }
 
 export async function selectActiveWordPositions(db, language) {
@@ -405,9 +439,9 @@ export async function insertActiveWord(db, wordId, position, addedAs, language) 
     word_language: word?.language,
     level: word?.level,
   });
-  persist(() =>
-    queries.insertActiveWord(db, wordId, position, addedAs, language)
-  );
+  persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
+    queries.insertActiveWord(transaction, wordId, position, addedAs, language)
+  ));
 }
 
 export async function selectActiveWordsAddedAsCounts(db, language) {
