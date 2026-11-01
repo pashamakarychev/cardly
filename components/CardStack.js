@@ -175,14 +175,14 @@ function CardStack(
           style={[
             styles.card,
             {
+            // Keep the base fill on the animated native view itself. Some
+            // Android builds fail to composite the nested absolute faces
+            // during ScrollView layout, leaving the card transparent.
+            backgroundColor: colors.textCard,
               transform: [{ translateX }, { translateY }, { scale }],
             },
           ]}
         >
-          <View
-            pointerEvents="none"
-            style={[styles.cardFace, { backgroundColor: colors.textCard }]}
-          />
           <Animated.View
             pointerEvents="none"
             style={[
