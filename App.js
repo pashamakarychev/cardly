@@ -10,7 +10,7 @@ import {
   createNavigationContainerRef,
 } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from './db/SQLiteProvider';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';

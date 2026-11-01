@@ -1,4 +1,4 @@
-import { AccessibilityInfo, findNodeHandle } from 'react-native';
+import { AccessibilityInfo, findNodeHandle, Platform } from 'react-native';
 
 /** Announce a short message to TalkBack / VoiceOver when focus shouldn't move. */
 export function announceForAccessibility(message) {
@@ -9,6 +9,12 @@ export function announceForAccessibility(message) {
 
 /** Move TalkBack / VoiceOver focus to a component ref after the tree settles. */
 export function setAccessibilityFocusOn(ref) {
+  // React Native Web does not implement findNodeHandle or imperative
+  // accessibility focus. Browser screen readers retain DOM focus themselves.
+  if (Platform.OS === 'web') {
+    return;
+  }
+
   const node = ref?.current ?? ref;
   if (node == null) {
     return;

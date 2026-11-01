@@ -1,4 +1,4 @@
-import { useSQLiteContext } from 'expo-sqlite';
+import { useSQLiteContext } from '../db/SQLiteProvider';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';

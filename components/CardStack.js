@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { colors, typography } from '../theme';
 import { setAccessibilityFocusOn } from '../utils/accessibility';
@@ -22,6 +22,7 @@ const CENTER_DY = BACK.top + BACK.h / 2 - (FRONT.top + FRONT.h / 2); // -22.4
 
 const LIFT_DURATION = 200;
 const SWAP_DURATION = 280;
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 // Survives remounts (e.g. new-word → exercise) so the first paint already has
 // a width and the cards are never missing for a frame. onLayout keeps this
@@ -37,6 +38,7 @@ function CardStack(
   );
   // Slot whose card is logically the front card (controls word assignment)
   const [frontSlot, setFrontSlot] = useState(0);
+  const [topSlot, setTopSlot] = useState(0);
 
   // pose: 0 = front position/size/color, 1 = back position/size/color.
   // These values are never reset; each card's pose persists between rounds,
@@ -45,8 +47,6 @@ function CardStack(
   // Extra upward offset, used only by the card leaving the front slot
   const liftsRef = useRef([new Animated.Value(0), new Animated.Value(0)]);
   const frontSlotRef = useRef(0);
-  const topSlotRef = useRef(0);
-  const cardRefs = useRef([null, null]);
   const animatingRef = useRef(false);
   const onTransitionEndRef = useRef(onTransitionEnd);
   onTransitionEndRef.current = onTransitionEnd;
@@ -72,7 +72,7 @@ function CardStack(
       toValue: 1,
       duration: LIFT_DURATION,
       easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start(({ finished }) => {
       if (!finished) {
         animatingRef.current = false;
@@ -80,30 +80,26 @@ function CardStack(
       }
 
       // The next card is exposed: put it on top, then swap poses in parallel.
-      // Keep stacking in a ref so a later React render (next word arriving)
-      // does not reset zIndex back to the pre-lift order.
-      topSlotRef.current = to;
-      cardRefs.current[from]?.setNativeProps({ style: { zIndex: 1 } });
-      cardRefs.current[to]?.setNativeProps({ style: { zIndex: 2 } });
+      setTopSlot(to);
 
       Animated.parallel([
         Animated.timing(lifts[from], {
           toValue: 0,
           duration: SWAP_DURATION,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(poses[from], {
           toValue: 1,
           duration: SWAP_DURATION,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(poses[to], {
           toValue: 0,
           duration: SWAP_DURATION,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start(({ finished: swapFinished }) => {
         animatingRef.current = false;
@@ -167,14 +163,10 @@ function CardStack(
     return (
       <View
         key={slot}
-        ref={(node) => {
-          cardRefs.current[slot] = node;
-        }}
-        collapsable={false}
         pointerEvents="box-none"
         style={[
           styles.cardSlot,
-          { zIndex: slot === topSlotRef.current ? 2 : 1 },
+          { zIndex: slot === topSlot ? 2 : 1 },
         ]}
       >
         <Animated.View
