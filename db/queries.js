@@ -80,14 +80,16 @@ export async function completeOnboarding(
         learning_language,
         level,
         new_words_per_day,
-        onboarding_completed
-      ) VALUES (1, ?, ?, ?, ?, 1)
+        onboarding_completed,
+        last_modified_at
+      ) VALUES (1, ?, ?, ?, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       ON CONFLICT(id) DO UPDATE SET
         native_language = excluded.native_language,
         learning_language = excluded.learning_language,
         level = excluded.level,
         new_words_per_day = excluded.new_words_per_day,
-        onboarding_completed = 1
+        onboarding_completed = 1,
+        last_modified_at = excluded.last_modified_at
     `,
     nativeLanguage,
     learningLanguage,
@@ -156,8 +158,11 @@ export async function getSessionValue(db, key, language) {
 export async function setSessionValue(db, key, value, language) {
   await db.runAsync( 
     `
-      INSERT INTO session (key, value, language) VALUES (?, ?, ?)
-      ON CONFLICT(key, language) DO UPDATE SET value = excluded.value
+      INSERT INTO session (key, value, language, last_modified_at)
+      VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      ON CONFLICT(key, language) DO UPDATE SET
+        value = excluded.value,
+        last_modified_at = excluded.last_modified_at
     `,
     key,
     value,
@@ -231,13 +236,14 @@ export async function upsertLearningProgress(
 ) {
   await db.runAsync( 
     `
-      INSERT INTO learning_progress (word_id, state, next_review_at, interval_index, language)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO learning_progress (word_id, state, next_review_at, interval_index, language, last_modified_at)
+      VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       ON CONFLICT(word_id) DO UPDATE SET
         state = excluded.state,
         next_review_at = excluded.next_review_at,
         interval_index = excluded.interval_index,
-        language = excluded.language
+        language = excluded.language,
+        last_modified_at = excluded.last_modified_at
     `,
     wordId,
     state,
@@ -448,8 +454,8 @@ export async function selectActiveWordPositions(db, language) {
 export async function insertActiveWord(db, wordId, position, addedAs, language) {
   await db.runAsync( 
     `
-      INSERT INTO active_words (word_id, position, correct_streak, added_as, language)
-      VALUES (?, ?, 0, ?, ?)
+      INSERT INTO active_words (word_id, position, correct_streak, added_as, language, last_modified_at)
+      VALUES (?, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     `,
     wordId,
     position,
