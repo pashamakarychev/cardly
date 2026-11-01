@@ -1,5 +1,79 @@
 // Data-access layer: every SQL query and db.* call lives here.
 // Callers pass the expo-sqlite connection; this module does not change query results.
+import { SYNC_COLUMNS, syncRecordId } from './syncModel';
+
+export async function initializeSyncStorage(db, resetPersonalData = false) {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS sync_queue (id TEXT PRIMARY KEY NOT NULL, table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL, operation TEXT NOT NULL, payload TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS sync_versions (table_name TEXT NOT NULL, record_id TEXT NOT NULL,
+      last_modified_at TEXT NOT NULL, PRIMARY KEY(table_name, record_id));
+    CREATE TABLE IF NOT EXISTS sync_metadata (key TEXT PRIMARY KEY, value TEXT);
+  `);
+  for (const table of Object.keys(SYNC_COLUMNS)) {
+    const columns = await db.getAllAsync(`PRAGMA table_info(${table})`);
+    if (!columns.some((column) => column.name === 'last_modified_at')) {
+      await db.execAsync(`ALTER TABLE ${table} ADD COLUMN last_modified_at TEXT`);
+    }
+  }
+  await withWriteTransaction(db, async (tx) => {
+    if (await tx.getFirstAsync("SELECT value FROM sync_metadata WHERE key = 'initialized'")) return;
+    if (resetPersonalData) {
+      for (const table of Object.keys(SYNC_COLUMNS)) await tx.execAsync(`DELETE FROM ${table}`);
+      await tx.execAsync('DELETE FROM sync_queue; DELETE FROM sync_versions;');
+    } else {
+      // Preserve pre-sync data without pretending it was modified today.
+      for (const table of Object.keys(SYNC_COLUMNS)) {
+        for (const row of await tx.getAllAsync(`SELECT * FROM ${table}`)) {
+          const id = syncRecordId(table, row);
+          const pending = await tx.getFirstAsync('SELECT id FROM sync_queue WHERE table_name = ? AND record_id = ?', table, id);
+          if (!pending) await insertSyncQueueEntry(tx, table, id, 'insert', {
+            ...row, last_modified_at: row.last_modified_at ?? new Date(0).toISOString(),
+          });
+        }
+      }
+    }
+    await tx.runAsync("INSERT INTO sync_metadata VALUES ('initialized', '1')");
+  });
+}
+
+export async function getSyncQueue(db) {
+  return db.getAllAsync('SELECT * FROM sync_queue ORDER BY rowid');
+}
+
+export async function acknowledgeSyncEntry(db, id) {
+  await db.runAsync('DELETE FROM sync_queue WHERE id = ?', id);
+}
+
+export async function getSyncVersion(db, table, id) {
+  return db.getFirstAsync('SELECT last_modified_at FROM sync_versions WHERE table_name = ? AND record_id = ?', table, id);
+}
+
+export async function setSyncVersion(db, table, id, time) {
+  await db.runAsync(`INSERT INTO sync_versions VALUES (?, ?, ?)
+    ON CONFLICT(table_name, record_id) DO UPDATE SET last_modified_at = excluded.last_modified_at`, table, id, time);
+}
+
+export async function stampSyncRecord(db, table, identity, time) {
+  const keys = SYNC_KEYS[table];
+  await db.runAsync(`UPDATE ${table} SET last_modified_at = ? WHERE ${keys.map((key) => `${key} = ?`).join(' AND ')}`,
+    time, ...keys.map((key) => identity[key]));
+}
+
+export async function applySyncRecord(db, change) {
+  const table = change.table_name;
+  const columns = SYNC_COLUMNS[table];
+  if (!columns) throw new Error('Unknown sync table');
+  const row = change.payload;
+  const keys = table === 'session' ? ['key', 'language'] : table === 'settings' ? ['id'] : ['word_id'];
+  if (change.deleted) {
+    await db.runAsync(`DELETE FROM ${table} WHERE ${keys.map((key) => `${key} = ?`).join(' AND ')}`, ...keys.map((key) => row[key]));
+  } else {
+    await db.runAsync(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})
+      ON CONFLICT(${keys.join(',')}) DO UPDATE SET ${columns.filter((c) => !keys.includes(c)).map((c) => `${c}=excluded.${c}`).join(',')}`,
+      ...columns.map((column) => row[column] ?? null));
+  }
+}
 
 export async function configureConnection(db) {
   await db.execAsync( 'PRAGMA foreign_keys = ON');

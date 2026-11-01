@@ -9,6 +9,13 @@ const wordsByLanguage = new Map();
 const wordsById = new Map();
 const translationsByWordId = new Map();
 
+export function clearUserCache() {
+  settings = null;
+  sessionByLanguage.clear();
+  activeWordsByLanguage.clear();
+  learningProgressByLanguage.clear();
+}
+
 export function getSettingsCache() {
   return settings;
 }

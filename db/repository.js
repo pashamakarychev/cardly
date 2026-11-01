@@ -4,6 +4,70 @@
 import { LANGUAGE_CODES } from '../constants/preferences';
 import * as cache from './cache';
 import * as queries from './queries';
+import { syncRecordId, timestamp } from './syncModel';
+
+const listeners = new WeakMap();
+export function subscribeToDatabase(db, callback) {
+  if (!listeners.has(db)) listeners.set(db, new Set());
+  listeners.get(db).add(callback);
+  return () => listeners.get(db)?.delete(callback);
+}
+function notify(db, source) {
+  listeners.get(db)?.forEach((callback) => callback(source));
+}
+
+export async function initializeSyncStorage(db, resetPersonalData) {
+  await queries.initializeSyncStorage(db, resetPersonalData);
+  cache.clearUserCache();
+}
+
+export async function flushDatabaseWrites(db) {
+  await persistChain;
+  await writeChains.get(db);
+}
+
+export async function getSyncQueue(db) {
+  await flushDatabaseWrites(db);
+  return queries.getSyncQueue(db);
+}
+
+function serializedWrite(db, task) {
+  const pending = (writeChains.get(db) ?? Promise.resolve()).then(() => queries.withWriteTransaction(db, task));
+  writeChains.set(db, pending.catch(() => {}));
+  return pending;
+}
+
+export async function acknowledgeSyncEntry(db, id) {
+  await serializedWrite(db, (tx) => queries.acknowledgeSyncEntry(tx, id));
+}
+
+export async function applyRemoteChanges(db, changes) {
+  await flushDatabaseWrites(db);
+  let changed = false;
+  await serializedWrite(db, async (tx) => {
+    const queued = await queries.getSyncQueue(tx);
+    for (const change of changes) {
+      const id = syncRecordId(change.table_name, change.payload);
+      const version = await queries.getSyncVersion(tx, change.table_name, id);
+      const local = await queries.selectSyncRecord(tx, change.table_name, change.payload);
+      const pending = queued.filter((entry) => entry.table_name === change.table_name && entry.record_id === id);
+      const latest = Math.max(timestamp(version?.last_modified_at), timestamp(local?.last_modified_at),
+        ...pending.map((entry) => timestamp(JSON.parse(entry.payload).last_modified_at)));
+      if (timestamp(change.last_modified_at) < latest) continue;
+      const row = { ...change.payload, last_modified_at: new Date(change.last_modified_at).toISOString() };
+      // Avoid invalidating caches and refreshing screens for unchanged snapshots.
+      if (timestamp(change.last_modified_at) === latest && pending.length === 0 &&
+          (change.deleted ? local == null : local && Object.keys(local).every((key) => local[key] === row[key]))) continue;
+      await queries.applySyncRecord(tx, { ...change, payload: row });
+      await queries.setSyncVersion(tx, change.table_name, id, row.last_modified_at);
+      changed = true;
+    }
+  });
+  if (changed) {
+    cache.clearUserCache();
+    notify(db, 'remote');
+  }
+}
 
 const writeChains = new WeakMap();
 
@@ -12,7 +76,7 @@ function writeWithSync(db, tableName, identity, write) {
   const pending = previous.then(() => queries.withWriteTransaction(db, async (transaction) => {
     const before = await queries.selectSyncRecord(transaction, tableName, identity);
     await write(transaction);
-    const after = await queries.selectSyncRecord(transaction, tableName, identity);
+    let after = await queries.selectSyncRecord(transaction, tableName, identity);
     if (JSON.stringify(before) === JSON.stringify(after)) {
       return;
     }
@@ -23,13 +87,21 @@ function writeWithSync(db, tableName, identity, write) {
     const recordId = tableName === 'session'
       ? JSON.stringify([identity.key, identity.language])
       : String(identity.id ?? identity.word_id);
+    const version = await queries.getSyncVersion(transaction, tableName, recordId);
+    const time = new Date(Math.max(Date.now(), timestamp(before?.last_modified_at) + 1,
+      timestamp(version?.last_modified_at) + 1)).toISOString();
+    if (after != null) {
+      await queries.stampSyncRecord(transaction, tableName, identity, time);
+      after = { ...after, last_modified_at: time };
+    }
+    await queries.setSyncVersion(transaction, tableName, recordId, time);
     await queries.insertSyncQueueEntry(
-      transaction, tableName, recordId, operation, after ?? before
+      transaction, tableName, recordId, operation, after ?? { ...before, last_modified_at: time }
     );
   }));
   // A failed write must not prevent later transactions from running.
   writeChains.set(db, pending.catch(() => {}));
-  return pending;
+  return pending.then(() => notify(db, 'local'));
 }
 
 export async function configureConnection(db) {

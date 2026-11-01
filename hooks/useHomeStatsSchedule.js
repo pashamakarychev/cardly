@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
 import { getNearestNextReviewAt } from '../learning/learning';
+import { subscribeToDatabase } from '../db/repository';
 import {
   MAX_TIMEOUT_MS,
   msUntilLocalMidnight,
@@ -106,6 +107,13 @@ export function useHomeStatsSchedule(db, refreshHomeStats, isHomeActive) {
     scheduleReviewTimer();
     scheduleMidnightTimer();
 
+    const unsubscribe = subscribeToDatabase(db, (source) => {
+      if (source === 'remote' && !cancelled) {
+        scheduleReviewTimer();
+        scheduleMidnightTimer();
+      }
+    });
+
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || cancelled) {
         return;
@@ -122,6 +130,7 @@ export function useHomeStatsSchedule(db, refreshHomeStats, isHomeActive) {
       cancelled = true;
       clearAllTimers();
       subscription.remove();
+      unsubscribe();
     };
   }, [db, isHomeActive]);
 }

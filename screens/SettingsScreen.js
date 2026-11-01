@@ -1,5 +1,5 @@
 import { useSQLiteContext } from '../db/SQLiteProvider';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -56,6 +56,14 @@ export default function SettingsScreen({
     preferences?.wordsPerDay ?? '10'
   );
   const [languageDialog, setLanguageDialog] = useState(null);
+
+  useEffect(() => {
+    if (!preferences) return;
+    setSpeaks(preferences.speaks);
+    setLearning(preferences.learning);
+    setLevel(preferences.level);
+    setWordsPerDay(preferences.wordsPerDay);
+  }, [preferences]);
 
   const updatePreferences = (patch) => {
     onPreferencesChange?.({ speaks, learning, level, wordsPerDay, ...patch });

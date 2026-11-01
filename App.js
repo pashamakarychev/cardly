@@ -10,7 +10,7 @@ import {
   createNavigationContainerRef,
 } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { SQLiteProvider, useSQLiteContext } from './db/SQLiteProvider';
+import { useSQLiteContext } from './db/SQLiteProvider';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
@@ -18,8 +18,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomNavigation, { TAB_KEYS } from './components/BottomNavigation';
-import { DATABASE_ASSET, DATABASE_NAME, WORD_STATES, initDb } from './db/database';
-import { getSettings } from './db/repository';
+import { WORD_STATES } from './db/database';
+import { getSettings, subscribeToDatabase } from './db/repository';
+import AccountDatabase from './components/AccountDatabase';
+import { startSync, syncDatabase } from './lib/sync';
 import {
   ADDED_AS,
   EXERCISE_SOURCES,
@@ -100,8 +102,9 @@ const MAIN_ROUTE = 'Main';
 // Screen state must live inside SQLiteProvider's children. The provider is
 // memoized without comparing children, so updating screens from the parent
 // would not trigger a re-render.
-function AppContent() {
+function AppContent({ userId }) {
   const db = useSQLiteContext();
+  useEffect(() => startSync(db, userId, () => navigationRef.getCurrentRoute()?.name !== 'Session'), [db, userId]);
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const [initialRoute, setInitialRoute] = useState(null);
@@ -181,6 +184,7 @@ function AppContent() {
   };
 
   const enterAuthenticatedApp = async ({ replace = false } = {}) => {
+    await syncDatabase(db).catch(() => {}); // Offline sessions keep using local data.
     const settings = await getSettings(db);
     if (await applySettings(settings)) {
       setActiveTab('home');
@@ -228,6 +232,12 @@ function AppContent() {
 
     loadInitialScreen();
   }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => subscribeToDatabase(db, (source) => {
+    if (source === 'remote') {
+      getSettings(db).then(applySettings).then(refreshHomeStats).catch(console.error);
+    }
+  }), [db, refreshHomeStats]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Next step prepared while the answer feedback and card transition play,
   // so the round can advance in the same batch as the card slot swap.
@@ -480,6 +490,7 @@ function AppContent() {
 
   // Bottom nav is only shown on Main; its active item follows the pager.
   const handleNavigationStateChange = () => {
+    syncDatabase(db).catch(() => {});
     const routeName = navigationRef.getCurrentRoute()?.name;
     if (routeName === MAIN_ROUTE) {
       setActiveTab((tab) => {
@@ -587,7 +598,6 @@ function AppContent() {
               <LoginScreen
                 onLogIn={async (email, password) => {
                   await signInWithEmail(email, password);
-                  await enterAuthenticatedApp({ replace: true });
                 }}
                 onSignUpPress={() => {
                   navigateTo('SignUp');
@@ -606,7 +616,6 @@ function AppContent() {
               <SignUpScreen
                 onSignUp={async (email, password) => {
                   await signUpWithEmail(email, password);
-                  await enterAuthenticatedApp({ replace: true });
                 }}
                 onLogInPress={() => {
                   navigateTo('Login', { from: 'left' });
@@ -753,13 +762,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <SQLiteProvider
-          databaseName={DATABASE_NAME}
-          assetSource={{ assetId: DATABASE_ASSET }}
-          onInit={initDb}
-        >
-          <AppContent />
-        </SQLiteProvider>
+        <AccountDatabase>{(userId) => <AppContent userId={userId} />}</AccountDatabase>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
