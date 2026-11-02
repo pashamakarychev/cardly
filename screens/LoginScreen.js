@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccessibleText from '../components/AccessibleText';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
+import { EyeIcon } from '../components/icons/EyeIcon';
 import { EyeOffIcon } from '../components/icons/EyeOffIcon';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { useIsDesktop } from '../hooks/useIsDesktop';
@@ -119,7 +120,7 @@ export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPr
                   secureTextEntry={!passwordVisible}
                   autoComplete="password"
                   textContentType="password"
-                  rightIcon={<EyeOffIcon />}
+                  rightIcon={passwordVisible ? <EyeIcon /> : <EyeOffIcon />}
                   onRightIconPress={() => {
                     setPasswordVisible((visible) => !visible);
                   }}
