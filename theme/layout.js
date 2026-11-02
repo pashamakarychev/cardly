@@ -23,6 +23,10 @@ export const layout = {
 
   // Wider than this uses the tablet compositions.
   tabletBreakpoint: 768,
+  desktopBreakpoint: 1200,
+  sidebarWidth: 300,
+  sidebarCollapsedWidth: 80,
+  desktopAuthPaddingTop: 78,
   tabletScreenPadding: 40,
   tabletContentPaddingTop: 48,
   tabletContentPaddingBottom: 64,

@@ -8,6 +8,7 @@ import MetricCard from '../components/MetricCard';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 const HOME_BUTTON_HEIGHT = 60;
@@ -19,6 +20,7 @@ export default function SessionCompleteScreen({
 }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const fontScale = useFontScale();
   const homeButtonHeight = HOME_BUTTON_HEIGHT * fontScale;
 
@@ -66,7 +68,7 @@ export default function SessionCompleteScreen({
           </View>
         </View>
       </ScrollView>
-      <BottomGradient bottom={homeBottom} />
+      <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : homeBottom} />
       <View style={[styles.footer, { bottom: homeBottom, paddingHorizontal }]}>
         <Button title="Home" onPress={onHome} style={styles.footerButton} />
       </View>

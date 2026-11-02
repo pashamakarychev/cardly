@@ -9,6 +9,7 @@ import Dialog from '../components/Dialog';
 import MetricRow from '../components/MetricRow';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import { useWordsAvailabilityLabel } from '../hooks/useWordsAvailabilityLabel';
 import { colors, layout, typography } from '../theme';
 
@@ -50,6 +51,7 @@ export default function HomeScreen({
 }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const fontScale = useFontScale();
   const dialog = levelCompletedCopy(levelCompleted, currentLevel);
   const availabilityLabel = useWordsAvailabilityLabel({
@@ -66,9 +68,9 @@ export default function HomeScreen({
     : insets.bottom + 16;
 
   const paddingTop = isTablet
-    ? Math.max(insets.top, navBottom + navHeight)
+    ? Math.max(insets.top, isDesktop ? layout.tabletScreenPadding : navBottom + navHeight)
     : insets.top + layout.contentTopPadding;
-  const paddingBottom = navBottom + navHeight;
+  const paddingBottom = isDesktop ? Math.max(insets.bottom, layout.tabletScreenPadding) : navBottom + navHeight;
   const paddingHorizontal = isTablet
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;

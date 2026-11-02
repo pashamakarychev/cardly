@@ -16,6 +16,7 @@ import Button from '../components/Button';
 import TextField from '../components/TextField';
 import { EyeOffIcon } from '../components/icons/EyeOffIcon';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 const PHONE_SPACER_HEIGHT = 137;
@@ -25,6 +26,7 @@ const APP_ICON_SIZE = 64;
 export default function SignUpScreen({ onSignUp, onLogInPress }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -53,7 +55,7 @@ export default function SignUpScreen({ onSignUp, onLogInPress }) {
     }
   };
 
-  const paddingTop = isTablet
+  const paddingTop = isDesktop ? Math.max(insets.top, layout.desktopAuthPaddingTop) : isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
   const paddingBottom = Math.max(insets.bottom, layout.screenPaddingBottom);

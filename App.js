@@ -64,6 +64,7 @@ import {
 } from './navigation/transitions';
 import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
 import { useIsTablet } from './hooks/useIsTablet';
+import { useIsDesktop } from './hooks/useIsDesktop';
 import * as Linking from 'expo-linking';
 
 import {
@@ -107,6 +108,7 @@ function AppContent({ userId }) {
   useEffect(() => startSync(db, userId, () => navigationRef.getCurrentRoute()?.name !== 'Session'), [db, userId]);
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const [initialRoute, setInitialRoute] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
   const [slideFrom, setSlideFrom] = useState('right');
@@ -725,7 +727,7 @@ function AppContent({ userId }) {
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
-      {activeTab != null && (
+      {activeTab != null && !isDesktop && (
         <View pointerEvents="box-none" style={styles.navOverlay}>
           <View
             style={[

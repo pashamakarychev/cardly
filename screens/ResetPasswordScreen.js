@@ -12,6 +12,7 @@ import AccessibleText from '../components/AccessibleText';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 const PHONE_SPACER_HEIGHT = 137;
@@ -20,6 +21,7 @@ const RESET_CONTENT_WIDTH = 375;
 export default function ResetPasswordScreen({ onSendResetLink }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const [email, setEmail] = useState('');
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
@@ -47,7 +49,7 @@ export default function ResetPasswordScreen({ onSendResetLink }) {
     }
   };
 
-  const paddingTop = isTablet
+  const paddingTop = isDesktop ? Math.max(insets.top, layout.desktopAuthPaddingTop) : isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
   const paddingBottom = Math.max(insets.bottom, layout.screenPaddingBottom);

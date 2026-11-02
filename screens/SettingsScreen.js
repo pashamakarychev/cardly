@@ -21,6 +21,7 @@ import {
 import { updateSettings } from '../db/repository';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 // Bottom nav geometry (matches BottomNavigation + App nav overlay).
@@ -37,6 +38,7 @@ export default function SettingsScreen({
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const fontScale = useFontScale();
   const headerHeight = HEADER_HEIGHT * fontScale;
   const navHeight = NAV_HEIGHT * fontScale;
@@ -148,7 +150,8 @@ export default function SettingsScreen({
           {
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
-            paddingBottom: navBottom + navHeight + layout.contentToOverlayGap,
+            paddingBottom: isDesktop ? Math.max(insets.bottom, layout.tabletScreenPadding)
+              : navBottom + navHeight + layout.contentToOverlayGap,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -168,7 +171,7 @@ export default function SettingsScreen({
 
       {/* Phone only — tablet Settings has no top gradient in Figma. */}
       {!isTablet && <TopGradient fillHeight={insets.top} />}
-      <View
+      {!isDesktop && <View
         pointerEvents="box-none"
         style={[
           styles.header,
@@ -202,10 +205,10 @@ export default function SettingsScreen({
             />
           </>
         )}
-      </View>
+      </View>}
 
       {/* Fade across the nav; fill covers the bottom safe zone under it. */}
-      <BottomGradient bottom={navBottom} height={navHeight} />
+      <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : navBottom} height={navHeight} />
       <Dialog
         visible={languageDialog != null}
         title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}

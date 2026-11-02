@@ -3,6 +3,8 @@ import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { TAB_KEYS } from '../components/BottomNavigation';
+import Sidebar from '../components/Sidebar';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import HomeScreen from './HomeScreen';
 import SettingsScreen from './SettingsScreen';
 
@@ -32,6 +34,7 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
   },
   ref,
 ) {
+  const isDesktop = useIsDesktop();
   const scrollRef = useRef(null);
   const widthRef = useRef(0);
   const pageIndexRef = useRef(0);
@@ -69,7 +72,7 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
       setPageIndex(index);
 
       // Screen readers only mount the active page — no horizontal offset to sync.
-      if (screenReaderEnabled || pageWidth <= 0) {
+      if (isDesktop || screenReaderEnabled || pageWidth <= 0) {
         return;
       }
 
@@ -83,7 +86,7 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
         programmaticRef.current = false;
       }
     },
-  }), [screenReaderEnabled]);
+  }), [screenReaderEnabled, isDesktop]);
 
   const syncPageFromOffset = (x) => {
     const pageWidth = widthRef.current;
@@ -99,8 +102,24 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
     onPageIndexChange?.(index);
   };
 
-  if (screenReaderEnabled == null) {
+  if (screenReaderEnabled == null && !isDesktop) {
     return <View style={styles.container} />;
+  }
+
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopShell}>
+        <Sidebar activeTab={TAB_KEYS[pageIndex]} onTabPress={(tab) => {
+          const index = TAB_KEYS.indexOf(tab);
+          pageIndexRef.current = index;
+          setPageIndex(index);
+          onPageIndexChange?.(index);
+        }} />
+        <View style={styles.desktopContent}>
+          {pageIndex === 0 ? <HomeScreen {...homeProps} /> : <SettingsScreen {...settingsProps} />}
+        </View>
+      </View>
+    );
   }
 
   // With TalkBack / VoiceOver on, only the active tab exists in the tree so
@@ -185,6 +204,8 @@ const MainTabsScreen = forwardRef(function MainTabsScreen(
 export default MainTabsScreen;
 
 const styles = StyleSheet.create({
+  desktopShell: { flex: 1, flexDirection: 'row' },
+  desktopContent: { flex: 1, minWidth: 0 },
   container: {
     flex: 1,
   },
