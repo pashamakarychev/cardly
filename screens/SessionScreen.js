@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../components/Button';
@@ -15,8 +15,6 @@ import { colors, layout } from '../theme';
 import { announceForAccessibility } from '../utils/accessibility';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
-// Figma tablet Content frame height — keeps New Word / Exercise aligned.
-const TABLET_CONTENT_MIN_HEIGHT = 656;
 const HEADER_HEIGHT = 48;
 // Figma Exercise Buttons frame: 4 × 60px buttons + 3 × 12px gaps.
 const BUTTON_HEIGHT = 60;
@@ -51,7 +49,6 @@ export default function SessionScreen({
   const isTablet = useIsTablet();
   const fontScale = useFontScale();
   const screenReaderEnabled = useScreenReaderEnabled();
-  const { height: windowHeight } = useWindowDimensions();
   const [wrongOptions, setWrongOptions] = useState([]);
   const [resolved, setResolved] = useState(false);
   const cardStackRef = useRef(null);
@@ -154,18 +151,10 @@ export default function SessionScreen({
   const headerHeight = HEADER_HEIGHT * fontScale;
   const buttonsHeight = BUTTONS_HEIGHT * fontScale;
 
-  // Cap min-height on short viewports (e.g. landscape) so content can still fit.
-  const tabletContentMinHeight = Math.min(
-    TABLET_CONTENT_MIN_HEIGHT,
-    Math.max(
-      0,
-      windowHeight -
-        topInset -
-        bottomInset -
-        headerHeight -
-        layout.tabletSessionPaddingTop,
-    ),
-  );
+  // These are minimums: short viewports scroll and larger text can grow.
+  const contentMinHeight = isTablet
+    ? layout.tabletSessionContentMinHeight
+    : layout.sessionContentMinHeight;
 
   const buttons = (
     <View style={[styles.buttons, { height: buttonsHeight, gap: BUTTON_GAP * fontScale }]}>
@@ -203,9 +192,9 @@ export default function SessionScreen({
           styles.scrollContent,
           {
             paddingTop: isTablet
-              ? topInset + headerHeight + layout.tabletSessionPaddingTop
+              ? Math.max(topInset, bottomInset) + headerHeight
               : topInset + headerHeight,
-            paddingBottom: bottomInset,
+            paddingBottom: isTablet ? Math.max(topInset, bottomInset) + headerHeight : bottomInset,
             paddingHorizontal,
             justifyContent: isTablet ? 'center' : undefined,
           },
@@ -214,15 +203,15 @@ export default function SessionScreen({
         bounces={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Figma Container: max 600, full width; phone grows so Spacer can flex. */}
+        {/* Compact column; phone spacer shrinks before the screen scrolls. */}
         <View
-          style={[styles.container, !isTablet && styles.containerPhone]}
+          style={[styles.container, isTablet ? styles.containerTablet : styles.containerPhone]}
         >
           {!isTablet && <View style={styles.spacer} />}
           <View
             style={[
               styles.content,
-              isTablet && { minHeight: tabletContentMinHeight },
+              { minHeight: contentMinHeight },
             ]}
           >
             <CardStack
@@ -245,12 +234,14 @@ export default function SessionScreen({
           { top: topInset, height: headerHeight, paddingHorizontal },
         ]}
       >
-        <IconButton
-          icon={<XIcon />}
-          onPress={onClose}
-          accessibilityLabel="Close session"
-        />
-        <ProgressBar progress={progress} />
+        <View style={styles.headerContent}>
+          <IconButton
+            icon={<XIcon />}
+            onPress={onClose}
+            accessibilityLabel="Close session"
+          />
+          <ProgressBar progress={progress} />
+        </View>
       </View>
     </View>
   );
@@ -270,11 +261,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   container: {
-    maxWidth: layout.maxContentWidth,
+    maxWidth: layout.compactContentWidth,
     width: '100%',
   },
   containerPhone: {
     flexGrow: 1,
+  },
+  containerTablet: {
+    paddingTop: layout.tabletSessionPaddingTop,
   },
   content: {
     gap: 24,
@@ -282,12 +276,17 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
     left: 0,
     position: 'absolute',
     right: 0,
     zIndex: 1,
+  },
+  headerContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+    maxWidth: layout.sessionHeaderMaxWidth,
   },
   spacer: {
     flexGrow: 1,

@@ -731,10 +731,11 @@ function AppContent({ userId }) {
             style={[
               styles.navContainer,
               {
-                // Phone: 16px above the home indicator. Tablet frames pin the
-                // bar 50px from the bottom edge (Figma Home / Settings).
+                // Tablet: Home is 50px from the edge; Settings is 40px.
                 bottom: isTablet
-                  ? Math.max(insets.bottom, layout.screenPaddingBottom)
+                  ? Math.max(insets.bottom, activeTab === 'settings'
+                    ? layout.tabletScreenPadding
+                    : layout.screenPaddingBottom)
                   : insets.bottom + 16,
               },
             ]}

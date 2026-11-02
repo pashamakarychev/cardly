@@ -44,7 +44,7 @@ export default function SettingsScreen({
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
   const navBottom = isTablet
-    ? Math.max(insets.bottom, layout.screenPaddingBottom)
+    ? Math.max(insets.bottom, layout.tabletScreenPadding)
     : insets.bottom + NAV_BOTTOM_PADDING;
   const paddingHorizontal = isTablet
     ? layout.tabletScreenPadding
@@ -123,12 +123,14 @@ export default function SettingsScreen({
       />
       <ChipSection
         label="My level"
+        gap={24}
         options={LEVELS}
         selected={level}
         onSelect={handleLevelSelect}
       />
       <ChipSection
         label="New words per day"
+        gap={24}
         options={WORDS_PER_DAY}
         selected={wordsPerDay}
         onSelect={handleWordsPerDaySelect}

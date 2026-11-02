@@ -1,9 +1,14 @@
 // Layout tokens from the Cardly Figma responsive frames.
-// Phone content columns cap at 600px. Above tabletBreakpoint, screens use
+// Compact study columns cap at 375px; preference columns at 600px.
+// Above tabletBreakpoint, screens use
 // the tablet frames (40px padding, vertically centered content).
 
 export const layout = {
   maxContentWidth: 600,
+  compactContentWidth: 375,
+  sessionHeaderMaxWidth: 1024,
+  sessionContentMinHeight: 520,
+  tabletSessionContentMinHeight: 523,
   screenPaddingX: 16,
   // Bottom inset used when a screen pins a primary control above the home
   // indicator (Continue / Home / session actions).

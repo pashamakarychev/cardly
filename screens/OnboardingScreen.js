@@ -130,12 +130,14 @@ export default function OnboardingScreen({ onContinue }) {
           />
           <ChipSection
             label="My level"
+            gap={24}
             options={LEVELS}
             selected={level}
             onSelect={setLevel}
           />
           <ChipSection
             label="New words per day"
+            gap={24}
             options={WORDS_PER_DAY}
             selected={wordsPerDay}
             onSelect={setWordsPerDay}

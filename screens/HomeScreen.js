@@ -66,7 +66,7 @@ export default function HomeScreen({
     : insets.bottom + 16;
 
   const paddingTop = isTablet
-    ? Math.max(insets.top, layout.tabletScreenPadding)
+    ? Math.max(insets.top, navBottom + navHeight)
     : insets.top + layout.contentTopPadding;
   const paddingBottom = navBottom + navHeight;
   const paddingHorizontal = isTablet
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     gap: 24,
-    maxWidth: layout.maxContentWidth,
+    maxWidth: layout.compactContentWidth,
     width: '100%',
   },
   // Fills the scroll viewport so the spacer can grow/shrink before scrolling.

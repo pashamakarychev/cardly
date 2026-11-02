@@ -10,9 +10,10 @@ export default function ChipSection({
   selected,
   onSelect,
   disabledOptions = [],
+  gap = 16,
 }) {
   return (
-    <View style={styles.section} accessibilityRole="radiogroup">
+    <View style={[styles.section, { gap }]} accessibilityRole="radiogroup">
       <AccessibleText style={styles.label} accessibilityRole="header">
         {label}
       </AccessibleText>
@@ -33,7 +34,7 @@ export default function ChipSection({
 
 const styles = StyleSheet.create({
   section: {
-    gap: 16,
+    width: '100%',
   },
   label: {
     ...typography.h3,

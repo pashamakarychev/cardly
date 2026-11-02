@@ -30,7 +30,7 @@ export default function SessionCompleteScreen({
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
   const paddingTop = isTablet
-    ? Math.max(insets.top, layout.tabletScreenPadding)
+    ? Math.max(insets.top, homeButtonHeight + homeBottom)
     : insets.top + layout.contentTopPadding;
 
   return (
@@ -89,8 +89,8 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    gap: 24,
-    maxWidth: layout.maxContentWidth,
+    gap: 10,
+    maxWidth: layout.compactContentWidth,
     width: '100%',
   },
   footer: {
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   footerButton: {
-    maxWidth: layout.maxContentWidth,
+    maxWidth: layout.compactContentWidth,
     width: '100%',
   },
   iconContainer: {
