@@ -294,7 +294,7 @@ export async function deleteSessionValue(db, key, language) {
 
 export async function getLearningProgressIntervalIndex(db, wordId, language) {
   await ensureLearningProgressCache(db, language);
-  const row = cache
+  const row = cache.forDatabase(db)
     .getLearningProgressCache(language)
     .find((item) => sameId(item.word_id, wordId));
   if (row != null) {
@@ -337,7 +337,7 @@ export async function upsertLearningProgress(
   language
 ) {
   await ensureLearningProgressCache(db, language);
-  const existing = cache
+  const existing = cache.forDatabase(db)
     .getLearningProgressCache(language)
     .find((item) => sameId(item.word_id, wordId));
   const word = existing == null ? await getWordRow(db, wordId) : null;
@@ -368,7 +368,7 @@ export async function selectDueLearningWords(db, language, state, now) {
   await ensureLearningProgressCache(db, language);
   const excludeWordIds = cachedActiveWordIds(db, language);
 
-  return cache
+  return cache.forDatabase(db)
     .getLearningProgressCache(language)
     .filter((row) => {
       if (row.state !== state) {
@@ -420,7 +420,7 @@ export async function selectNearestNextReviewAt(db, language, state, now) {
 
 export async function selectActiveWordStreaks(db, language) {
   await ensureActiveWordsCache(db, language);
-  return cache
+  return cache.forDatabase(db)
     .getActiveWordsCache(language)
     .map((row) => ({ correct_streak: row.correct_streak }));
 }
@@ -432,7 +432,7 @@ export async function countActiveWords(db, language) {
 
 export async function selectActiveWordAtPosition(db, position, language) {
   await ensureActiveWordsCache(db, language);
-  const row = cache
+  const row = cache.forDatabase(db)
     .getActiveWordsCache(language)
     .find((item) => Number(item.position) === Number(position));
   if (row == null) {
@@ -450,7 +450,7 @@ export async function selectActiveWordAtPosition(db, position, language) {
 
 export async function selectOccupiedActivePosition(db, position, language) {
   await ensureActiveWordsCache(db, language);
-  const row = cache
+  const row = cache.forDatabase(db)
     .getActiveWordsCache(language)
     .find((item) => Number(item.position) === Number(position));
   return row == null ? null : { position: row.position };
@@ -465,7 +465,7 @@ export async function incrementActiveWordStreak(db, wordId, language) {
 
 export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  const row = cache
+  const row = cache.forDatabase(db)
     .getActiveWordsCache(language)
     .find((item) => Number(item.word_id) === Number(wordId));
   if (row == null) {
@@ -493,7 +493,7 @@ export async function resetActiveWordStreak(db, wordId, language) {
 
 export async function selectActiveWordPositions(db, language) {
   await ensureActiveWordsCache(db, language);
-  return cache
+  return cache.forDatabase(db)
     .getActiveWordsCache(language)
     .map((row) => ({ position: row.position }));
 }
@@ -549,7 +549,7 @@ export async function countUndisplayedWords(db, language, wordLanguage, levels) 
 
   let count = 0;
   for (const level of levels) {
-    count += cache
+    count += cache.forDatabase(db)
       .getWordsCache(wordLanguage, normalizeWordLevel(level))
       .filter((word) =>
         isUndisplayedWord(word, null, excludeActiveIds, excludeProgressIds)
@@ -697,7 +697,7 @@ export async function selectUndisplayedWordAtLevel(
     db,
     settingsLanguage
   );
-  const candidates = cache
+  const candidates = cache.forDatabase(db)
     .getWordsCache(wordLanguage, normalizeWordLevel(level))
     .filter((word) =>
       isUndisplayedWord(

@@ -63,6 +63,10 @@ test('queue timestamps, conflict resolution, tombstones and no sync echo', async
     },
   };
   await repo.initializeSyncStorage(db, true);
+  // Exercise the cache-backed paths used by Home and the session screen.
+  assert.deepEqual(await repo.selectDueLearningWords(db, 'English', 'LEARNING', Date.now()), []);
+  assert.deepEqual(await repo.selectActiveWordStreaks(db, 'English'), []);
+  assert.deepEqual(await repo.selectActiveWordPositions(db, 'English'), []);
   await repo.setSessionValue(db, 'test', 'local', 'English');
   let queue = await repo.getSyncQueue(db);
   assert.equal(queue.length, 1);
