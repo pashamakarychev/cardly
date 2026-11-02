@@ -12,7 +12,7 @@ import {
 import { createStackNavigator } from '@react-navigation/stack';
 import { useSQLiteContext } from './db/SQLiteProvider';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -65,12 +65,10 @@ import {
 import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
 import { useIsTablet } from './hooks/useIsTablet';
 import { useIsDesktop } from './hooks/useIsDesktop';
-import * as Linking from 'expo-linking';
+import { PasswordRecoveryContext, usePasswordRecovery } from './hooks/usePasswordRecovery';
 
 import {
-  createSessionFromUrl,
   getSession,
-  isPasswordRecoveryUrl,
   requestPasswordReset,
   signInWithEmail,
   signUpWithEmail,
@@ -104,6 +102,8 @@ const MAIN_ROUTE = 'Main';
 // memoized without comparing children, so updating screens from the parent
 // would not trigger a re-render.
 function AppContent({ userId }) {
+  // Context reaches the screens even when SQLiteProvider memoizes its children.
+  const { recoveryUserId, completeRecovery: onRecoveryComplete } = useContext(PasswordRecoveryContext);
   const db = useSQLiteContext();
   useEffect(() => startSync(db, userId, () =>
     !navigationRef.isReady() || navigationRef.getCurrentRoute()?.name !== 'Session'), [db, userId]);
@@ -186,10 +186,12 @@ function AppContent({ userId }) {
     return true;
   };
 
-  const enterAuthenticatedApp = async ({ replace = false } = {}) => {
+  const enterAuthenticatedApp = async ({ replace = false, isActive = () => true } = {}) => {
     await syncDatabase(db).catch(() => {}); // Offline sessions keep using local data.
     const settings = await getSettings(db);
-    if (await applySettings(settings)) {
+    const hasSettings = await applySettings(settings);
+    if (!isActive()) return;
+    if (hasSettings) {
       setActiveTab('home');
       if (replace) {
         navigationRef.reset({
@@ -212,29 +214,32 @@ function AppContent({ userId }) {
   };
 
   useEffect(() => {
+    let active = true;
     async function loadInitialScreen() {
-      try {
-        const initialUrl = await Linking.getInitialURL();
-        if (initialUrl) {
-          const recovered = await createSessionFromUrl(initialUrl);
-          if (recovered != null && isPasswordRecoveryUrl(initialUrl)) {
-            setInitialRoute('NewPassword');
-            return;
-          }
+      if (recoveryUserId != null && recoveryUserId === userId) {
+        setActiveTab(null);
+        setInitialRoute('NewPassword');
+        if (navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: 'NewPassword' }] });
         }
+        return;
+      }
+      try {
         const session = await getSession();
+        if (!active) return;
         if (session == null) {
           setInitialRoute('Login');
           return;
         }
-        await enterAuthenticatedApp();
+        await enterAuthenticatedApp({ isActive: () => active });
       } catch {
-        setInitialRoute('Login');
+        if (active) setInitialRoute('Login');
       }
     }
 
     loadInitialScreen();
-  }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { active = false; };
+  }, [db, userId, recoveryUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => subscribeToDatabase(db, (source) => {
     if (source === 'remote') {
@@ -282,20 +287,6 @@ function AppContent({ userId }) {
       navigationRef.navigate(routeName);
     }
   };
-
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', async ({ url }) => {
-      try {
-        const session = await createSessionFromUrl(url);
-        if (session != null && isPasswordRecoveryUrl(url)) {
-          navigateTo('NewPassword');
-        }
-      } catch {
-        // Ignore links that are not a valid password-recovery session.
-      }
-    });
-    return () => subscription.remove();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rounds within a session update state on the already-mounted Session
   // screen; only navigate when coming from another screen.
@@ -581,6 +572,12 @@ function AppContent({ userId }) {
     <>
       <NavigationContainer
         ref={navigationRef}
+        onReady={() => {
+          if (recoveryUserId != null && recoveryUserId === userId &&
+              navigationRef.getCurrentRoute()?.name !== 'NewPassword') {
+            navigationRef.reset({ index: 0, routes: [{ name: 'NewPassword' }] });
+          }
+        }}
         onStateChange={handleNavigationStateChange}
       >
         <Stack.Navigator
@@ -645,6 +642,7 @@ function AppContent({ userId }) {
                 onResetPassword={async (password) => {
                   await updatePassword(password);
                   await enterAuthenticatedApp({ replace: true });
+                  onRecoveryComplete();
                 }}
               />
             )}
@@ -753,20 +751,23 @@ function AppContent({ userId }) {
 }
 
 export default function App() {
+  const passwordRecovery = usePasswordRecovery();
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_700Bold,
   });
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !passwordRecovery.ready) {
     return null;
   }
 
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <AccountDatabase>{(userId) => <AppContent userId={userId} />}</AccountDatabase>
+        <PasswordRecoveryContext.Provider value={passwordRecovery}>
+          <AccountDatabase>{(userId) => <AppContent userId={userId} />}</AccountDatabase>
+        </PasswordRecoveryContext.Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
