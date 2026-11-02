@@ -13,7 +13,7 @@ test('recovery links support token fragments, code redirects and mixed parameter
   let exchanged;
   const session = { user: { id: 'recovering-user' } };
   const auth = load('lib/auth.js', {
-    Linking: {},
+    Linking: { createURL: () => 'cardly://new-password' },
     supabase: { auth: {
       exchangeCodeForSession: async code => { exchanged = code; return { data: { session } }; },
       setSession: async tokens => { exchanged = tokens; return { data: { session } }; },
@@ -29,6 +29,15 @@ test('recovery links support token fragments, code redirects and mixed parameter
   assert.equal(exchanged, 'test-code');
   assert.equal(await auth.createSessionFromUrl('cardly://new-password?access_token=test-access#refresh_token=test-refresh'), session);
   assert.deepEqual(exchanged, { access_token: 'test-access', refresh_token: 'test-refresh' });
+  exchanged = null;
+  for (const url of [
+    'https://evil.example/new-password?code=attacker',
+    'cardly://other#access_token=attacker&refresh_token=attacker&type=recovery',
+    'cardly://new-password?type=signup&code=attacker',
+  ]) {
+    assert.equal(await auth.createSessionFromUrl(url), null);
+    assert.equal(exchanged, null);
+  }
 });
 
 const flush = () => new Promise(resolve => setImmediate(resolve));

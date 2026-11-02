@@ -18,7 +18,7 @@ function notify(db, source) {
 
 export async function initializeSyncStorage(db, resetPersonalData) {
   await queries.initializeSyncStorage(db, resetPersonalData);
-  cache.clearUserCache();
+  cache.forDatabase(db).clearUserCache();
 }
 
 export async function flushDatabaseWrites(db) {
@@ -64,7 +64,7 @@ export async function applyRemoteChanges(db, changes) {
     }
   });
   if (changed) {
-    cache.clearUserCache();
+    cache.forDatabase(db).clearUserCache();
     notify(db, 'remote');
   }
 }
@@ -109,14 +109,14 @@ export async function configureConnection(db) {
 }
 
 export async function getSettings(db) {
-  const cached = cache.getSettingsCache();
+  const cached = cache.forDatabase(db).getSettingsCache();
   if (cached != null) {
     return { ...cached };
   }
 
   const row = await queries.getSettings(db);
   if (row != null) {
-    cache.setSettingsCache(row);
+    cache.forDatabase(db).setSettingsCache(row);
   }
   return row;
 }
@@ -129,7 +129,7 @@ export async function getLearningLanguage(db) {
 export async function completeOnboarding(db, values) {
   await writeWithSync(db, 'settings', { id: 1 }, (transaction) =>
     queries.completeOnboarding(transaction, values));
-  cache.setSettingsCache({
+  cache.forDatabase(db).setSettingsCache({
     native_language: values.nativeLanguage,
     learning_language: values.learningLanguage,
     level: values.level,
@@ -156,30 +156,30 @@ export async function updateSettings(db, values) {
   if (values.newWordsPerDay != null) {
     patch.new_words_per_day = Number(values.newWordsPerDay);
   }
-  cache.patchSettingsCache(patch);
+  cache.forDatabase(db).patchSettingsCache(patch);
   if (patch.learning_language != null) {
     await ensureSelectedWordsCache(db);
   }
 }
 
 async function ensureSessionCache(db, language) {
-  if (cache.hasSessionCache(language)) {
+  if (cache.forDatabase(db).hasSessionCache(language)) {
     return;
   }
   const rows = await queries.selectSessionRows(db, language);
-  cache.setSessionLanguageCache(language, rows);
+  cache.forDatabase(db).setSessionLanguageCache(language, rows);
 }
 
 async function ensureActiveWordsCache(db, language) {
-  if (cache.hasActiveWordsCache(language)) {
+  if (cache.forDatabase(db).hasActiveWordsCache(language)) {
     return;
   }
   const rows = await queries.selectActiveWordRows(db, language);
-  cache.setActiveWordsCache(language, rows);
+  cache.forDatabase(db).setActiveWordsCache(language, rows);
 }
 
-function cachedActiveWordIds(language) {
-  return cache.getActiveWordsCache(language).map((row) => row.word_id);
+function cachedActiveWordIds(db, language) {
+  return cache.forDatabase(db).getActiveWordsCache(language).map((row) => row.word_id);
 }
 
 // Keep SQLite writes ordered without blocking cache reads used for the next card.
@@ -192,11 +192,11 @@ function persist(task) {
 }
 
 async function ensureLearningProgressCache(db, language) {
-  if (cache.hasLearningProgressCache(language)) {
+  if (cache.forDatabase(db).hasLearningProgressCache(language)) {
     return;
   }
   const rows = await queries.selectLearningProgressRows(db, language);
-  cache.setLearningProgressCache(language, rows);
+  cache.forDatabase(db).setLearningProgressCache(language, rows);
 }
 
 function sameId(left, right) {
@@ -223,7 +223,7 @@ async function ensureWordsCache(db, wordLanguage) {
   if (wordLanguage == null) {
     return;
   }
-  if (cache.hasWordsCache(wordLanguage)) {
+  if (cache.forDatabase(db).hasWordsCache(wordLanguage)) {
     return;
   }
 
@@ -231,7 +231,7 @@ async function ensureWordsCache(db, wordLanguage) {
     queries.selectWordsByLanguage(db, wordLanguage),
     queries.selectTranslationsForLanguage(db, wordLanguage),
   ]);
-  cache.setWordsAndTranslationsCache(wordLanguage, words, translations);
+  cache.forDatabase(db).setWordsAndTranslationsCache(wordLanguage, words, translations);
 }
 
 async function ensureSelectedWordsCache(db) {
@@ -242,7 +242,7 @@ async function ensureSelectedWordsCache(db) {
 
 async function getWordRow(db, wordId) {
   await ensureSelectedWordsCache(db);
-  const cached = cache.getWordCache(wordId);
+  const cached = cache.forDatabase(db).getWordCache(wordId);
   if (cached != null) {
     return cached;
   }
@@ -260,7 +260,7 @@ function shuffle(items) {
 
 async function excludedLearningProgressWordIds(db, language) {
   await ensureLearningProgressCache(db, language);
-  return cache.getLearningProgressCache(language).map((row) => row.word_id);
+  return cache.forDatabase(db).getLearningProgressCache(language).map((row) => row.word_id);
 }
 
 function isUndisplayedWord(word, excludeWordId, excludeActiveIds, excludeProgressIds) {
@@ -275,19 +275,19 @@ function isUndisplayedWord(word, excludeWordId, excludeActiveIds, excludeProgres
 
 export async function getSessionValue(db, key, language) {
   await ensureSessionCache(db, language);
-  return cache.getSessionCacheValue(language, key);
+  return cache.forDatabase(db).getSessionCacheValue(language, key);
 }
 
 export async function setSessionValue(db, key, value, language) {
   await ensureSessionCache(db, language);
-  cache.setSessionCacheValue(language, key, value);
+  cache.forDatabase(db).setSessionCacheValue(language, key, value);
   persist(() => writeWithSync(db, 'session', { key, language }, (transaction) =>
     queries.setSessionValue(transaction, key, value, language)));
 }
 
 export async function deleteSessionValue(db, key, language) {
   await ensureSessionCache(db, language);
-  cache.deleteSessionCacheValue(language, key);
+  cache.forDatabase(db).deleteSessionCacheValue(language, key);
   persist(() => writeWithSync(db, 'session', { key, language }, (transaction) =>
     queries.deleteSessionValue(transaction, key, language)));
 }
@@ -311,7 +311,7 @@ export async function updateLearningProgressReview(
   nextReviewAt
 ) {
   await ensureLearningProgressCache(db, language);
-  cache.updateLearningProgressReviewCache(
+  cache.forDatabase(db).updateLearningProgressReviewCache(
     language,
     wordId,
     intervalIndex,
@@ -341,7 +341,7 @@ export async function upsertLearningProgress(
     .getLearningProgressCache(language)
     .find((item) => sameId(item.word_id, wordId));
   const word = existing == null ? await getWordRow(db, wordId) : null;
-  cache.upsertLearningProgressCache(language, {
+  cache.forDatabase(db).upsertLearningProgressCache(language, {
     word_id: wordId,
     state,
     next_review_at: nextReviewAt,
@@ -366,7 +366,7 @@ export async function upsertLearningProgress(
 export async function selectDueLearningWords(db, language, state, now) {
   await ensureActiveWordsCache(db, language);
   await ensureLearningProgressCache(db, language);
-  const excludeWordIds = cachedActiveWordIds(language);
+  const excludeWordIds = cachedActiveWordIds(db, language);
 
   return cache
     .getLearningProgressCache(language)
@@ -395,10 +395,10 @@ export async function selectDueLearningWords(db, language, state, now) {
 export async function selectNearestNextReviewAt(db, language, state, now) {
   await ensureActiveWordsCache(db, language);
   await ensureLearningProgressCache(db, language);
-  const excludeWordIds = cachedActiveWordIds(language);
+  const excludeWordIds = cachedActiveWordIds(db, language);
 
   let nearest = null;
-  for (const row of cache.getLearningProgressCache(language)) {
+  for (const row of cache.forDatabase(db).getLearningProgressCache(language)) {
     if (row.state !== state) {
       continue;
     }
@@ -427,7 +427,7 @@ export async function selectActiveWordStreaks(db, language) {
 
 export async function countActiveWords(db, language) {
   await ensureActiveWordsCache(db, language);
-  return { count: cache.getActiveWordsCache(language).length };
+  return { count: cache.forDatabase(db).getActiveWordsCache(language).length };
 }
 
 export async function selectActiveWordAtPosition(db, position, language) {
@@ -458,7 +458,7 @@ export async function selectOccupiedActivePosition(db, position, language) {
 
 export async function incrementActiveWordStreak(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  cache.incrementActiveWordStreakCache(language, wordId);
+  cache.forDatabase(db).incrementActiveWordStreakCache(language, wordId);
   persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
     queries.incrementActiveWordStreak(transaction, wordId, language)));
 }
@@ -479,14 +479,14 @@ export async function selectActiveWordStreakAndAddedAs(db, wordId, language) {
 
 export async function deleteActiveWord(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  cache.deleteActiveWordCache(language, wordId);
+  cache.forDatabase(db).deleteActiveWordCache(language, wordId);
   persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
     queries.deleteActiveWord(transaction, wordId, language)));
 }
 
 export async function resetActiveWordStreak(db, wordId, language) {
   await ensureActiveWordsCache(db, language);
-  cache.resetActiveWordStreakCache(language, wordId);
+  cache.forDatabase(db).resetActiveWordStreakCache(language, wordId);
   persist(() => writeWithSync(db, 'active_words', { word_id: wordId, language }, (transaction) =>
     queries.resetActiveWordStreak(transaction, wordId, language)));
 }
@@ -501,7 +501,7 @@ export async function selectActiveWordPositions(db, language) {
 export async function insertActiveWord(db, wordId, position, addedAs, language) {
   await ensureActiveWordsCache(db, language);
   const word = await getWordRow(db, wordId);
-  cache.insertActiveWordCache(language, {
+  cache.forDatabase(db).insertActiveWordCache(language, {
     word_id: wordId,
     position,
     correct_streak: 0,
@@ -519,7 +519,7 @@ export async function insertActiveWord(db, wordId, position, addedAs, language) 
 export async function selectActiveWordsAddedAsCounts(db, language) {
   await ensureActiveWordsCache(db, language);
   const counts = new Map();
-  for (const row of cache.getActiveWordsCache(language)) {
+  for (const row of cache.forDatabase(db).getActiveWordsCache(language)) {
     counts.set(row.added_as, (counts.get(row.added_as) ?? 0) + 1);
   }
   return [...counts.entries()].map(([added_as, count]) => ({
@@ -531,13 +531,13 @@ export async function selectActiveWordsAddedAsCounts(db, language) {
 export async function countUndisplayedWords(db, language, wordLanguage, levels) {
   await ensureActiveWordsCache(db, language);
   await ensureSelectedWordsCache(db);
-  const excludeActiveIds = cachedActiveWordIds(language);
+  const excludeActiveIds = cachedActiveWordIds(db, language);
   const excludeProgressIds = await excludedLearningProgressWordIds(
     db,
     language
   );
 
-  if (!cache.hasWordsCache(wordLanguage)) {
+  if (!cache.forDatabase(db).hasWordsCache(wordLanguage)) {
     return queries.countUndisplayedWords(
       db,
       language,
@@ -561,7 +561,7 @@ export async function countUndisplayedWords(db, language, wordLanguage, levels) 
 
 export async function selectTranslation(db, wordId, language) {
   await ensureSelectedWordsCache(db);
-  const translations = cache.getTranslationsCache(wordId);
+  const translations = cache.forDatabase(db).getTranslationsCache(wordId);
   if (translations != null) {
     const row = translations.find((item) => item.language === language);
     return row == null ? null : { translation: row.translation };
@@ -578,7 +578,7 @@ export async function selectSameLevelDistractors(
   correctTranslation
 ) {
   await ensureSelectedWordsCache(db);
-  if (!cache.hasWordsCache(wordLanguage)) {
+  if (!cache.forDatabase(db).hasWordsCache(wordLanguage)) {
     return queries.selectSameLevelDistractors(
       db,
       wordLanguage,
@@ -591,14 +591,14 @@ export async function selectSameLevelDistractors(
 
   const seen = new Set();
   const options = [];
-  for (const word of cache.getWordsCache(
+  for (const word of cache.forDatabase(db).getWordsCache(
     wordLanguage,
     normalizeWordLevel(level)
   )) {
     if (sameId(word.id, wordId)) {
       continue;
     }
-    const translations = cache.getTranslationsCache(word.id) ?? [];
+    const translations = cache.forDatabase(db).getTranslationsCache(word.id) ?? [];
     for (const row of translations) {
       if (
         row.language !== nativeLanguage ||
@@ -628,7 +628,7 @@ export async function selectOtherLevelDistractors(
   limit
 ) {
   await ensureSelectedWordsCache(db);
-  if (!cache.hasWordsCache(wordLanguage)) {
+  if (!cache.forDatabase(db).hasWordsCache(wordLanguage)) {
     return queries.selectOtherLevelDistractors(
       db,
       wordLanguage,
@@ -645,14 +645,14 @@ export async function selectOtherLevelDistractors(
   const excluded = new Set(excludeTranslations);
   const seen = new Set();
   const options = [];
-  for (const word of cache.getWordsCache(wordLanguage)) {
+  for (const word of cache.forDatabase(db).getWordsCache(wordLanguage)) {
     if (
       sameId(word.id, wordId) ||
       String(word.level).toLowerCase() === normalizedLevel
     ) {
       continue;
     }
-    const translations = cache.getTranslationsCache(word.id) ?? [];
+    const translations = cache.forDatabase(db).getTranslationsCache(word.id) ?? [];
     for (const row of translations) {
       if (
         row.language !== nativeLanguage ||
@@ -681,18 +681,18 @@ export async function selectUndisplayedWordAtLevel(
 ) {
   await ensureActiveWordsCache(db, settingsLanguage);
   await ensureSelectedWordsCache(db);
-  if (!cache.hasWordsCache(wordLanguage)) {
+  if (!cache.forDatabase(db).hasWordsCache(wordLanguage)) {
     return queries.selectUndisplayedWordAtLevel(
       db,
       wordLanguage,
       settingsLanguage,
       level,
       excludeWordId,
-      cachedActiveWordIds(settingsLanguage)
+      cachedActiveWordIds(db, settingsLanguage)
     );
   }
 
-  const excludeActiveIds = cachedActiveWordIds(settingsLanguage);
+  const excludeActiveIds = cachedActiveWordIds(db, settingsLanguage);
   const excludeProgressIds = await excludedLearningProgressWordIds(
     db,
     settingsLanguage

@@ -10,6 +10,31 @@ function load(file, dependencies = {}) {
   return new Function(...Object.keys(dependencies), source.replace(/^import .*;\r?\n/gm, '').replace(/export /g, '') + `\nreturn {${names.join(',')}};`)(...Object.values(dependencies));
 }
 
+test('late reads from a previous account cannot populate the current account cache', async () => {
+  const cache = load('db/cache.js');
+  const accountA = {};
+  const accountB = {};
+  let finishOldRead;
+  const repo = load('db/repository.js', {
+    cache, LANGUAGE_CODES: {}, syncRecordId: () => '', timestamp: () => 0,
+    queries: { getSettings: db => db === accountA
+      ? new Promise(resolve => { finishOldRead = resolve; })
+      : Promise.resolve({ native_language: 'French' }) },
+  });
+  const oldRead = repo.getSettings(accountA);
+  assert.equal((await repo.getSettings(accountB)).native_language, 'French');
+  finishOldRead({ native_language: 'English' });
+  await oldRead;
+  assert.equal((await repo.getSettings(accountB)).native_language, 'French');
+  assert.equal((await repo.getSettings(accountA)).native_language, 'English');
+  cache.forDatabase(accountA).setSessionCacheValue('Spanish', 'completed_steps', '42');
+  assert.equal(cache.forDatabase(accountB).getSessionCacheValue('Spanish', 'completed_steps'), null);
+  cache.forDatabase(accountA).setActiveWordsCache('Spanish', []);
+  cache.forDatabase(accountA).setLearningProgressCache('Spanish', []);
+  assert.equal(cache.forDatabase(accountB).hasActiveWordsCache('Spanish'), false);
+  assert.equal(cache.forDatabase(accountB).hasLearningProgressCache('Spanish'), false);
+});
+
 test('queue timestamps, conflict resolution, tombstones and no sync echo', async () => {
   const SQL = await initSqlJs();
   const sqlite = new SQL.Database(fs.readFileSync(path.join(__dirname, '../db/cardly.db')));
