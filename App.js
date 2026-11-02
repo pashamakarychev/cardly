@@ -105,7 +105,8 @@ const MAIN_ROUTE = 'Main';
 // would not trigger a re-render.
 function AppContent({ userId }) {
   const db = useSQLiteContext();
-  useEffect(() => startSync(db, userId, () => navigationRef.getCurrentRoute()?.name !== 'Session'), [db, userId]);
+  useEffect(() => startSync(db, userId, () =>
+    !navigationRef.isReady() || navigationRef.getCurrentRoute()?.name !== 'Session'), [db, userId]);
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const isDesktop = useIsDesktop();
