@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFontScale } from '../hooks/useFontScale';
-import { colors, fontFamilies, layout, typography } from '../theme';
+import { colors, fontFamilies, layout } from '../theme';
 import { HomeIcon } from './icons/HomeIcon';
 import { SettingsIcon } from './icons/SettingsIcon';
 import { useDelayedPressed } from './useDelayedPressed';
@@ -18,6 +18,7 @@ const ITEMS = [
 const WIDTH_DURATION = 200;
 const LABEL_DURATION = 120;
 const EASE_OUT = Easing.bezier(0, 0, 0.58, 1);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function animatedLabelStyle(opacity, translateX) {
   return { opacity, transform: [{ translateX }] };
@@ -38,8 +39,8 @@ function SidebarItem({ item, active, collapsed, labelStyle, onPress }) {
       accessibilityState={{ selected: active }}
       style={[styles.item, (active || hovered) && styles.itemActive, showPressed && styles.itemPressed]}
     >
-      <View accessible={false} importantForAccessibility="no-hide-descendants">
-        <Icon size={24} color={active ? colors.primary : colors.textPrimary} />
+      <View style={styles.itemIcon} accessible={false} importantForAccessibility="no-hide-descendants">
+        <Icon size={20} color={active ? colors.primary : colors.textPrimary} />
       </View>
       <Animated.Text
         pointerEvents="none"
@@ -59,6 +60,12 @@ export default function Sidebar({ activeTab = 'home', onTabPress }) {
   const fontScale = useFontScale();
   const expandedWidth = Math.max(layout.sidebarWidth, 240 * fontScale);
   const width = useRef(new Animated.Value(expandedWidth)).current;
+  // Center the toggle over the collapsed nav icons; keep it right-aligned when expanded.
+  const toggleLeft = width.interpolate({
+    inputRange: [layout.sidebarCollapsedWidth, expandedWidth],
+    outputRange: [(layout.sidebarCollapsedWidth - 32 - 36) / 2, expandedWidth - 32 - 36],
+    extrapolate: 'clamp',
+  });
   const dividerX = useRef(new Animated.Value(0)).current;
   const labelOpacities = useRef([0, 1, 2].map(() => new Animated.Value(1))).current;
   const labelOffsets = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
@@ -70,7 +77,7 @@ export default function Sidebar({ activeTab = 'home', onTabPress }) {
     const animation = Animated.parallel([
       Animated.timing(width, { toValue: collapsed ? layout.sidebarCollapsedWidth : expandedWidth,
         duration: WIDTH_DURATION, easing: EASE_OUT, useNativeDriver: false }),
-      Animated.timing(dividerX, { toValue: collapsed ? 6 : 0,
+      Animated.timing(dividerX, { toValue: collapsed ? 5 : 0,
         duration: WIDTH_DURATION, easing: EASE_OUT, useNativeDriver: false }),
     ]);
     animation.start();
@@ -102,24 +109,27 @@ export default function Sidebar({ activeTab = 'home', onTabPress }) {
             style={[styles.brandName, animatedLabelStyle(labelOpacities[0], labelOffsets[0])]}>
             Cardly
           </Animated.Text>
-          <Pressable
+          <AnimatedPressable
             {...pressProps}
             onPress={() => setCollapsed((value) => !value)}
             accessibilityRole="button"
             accessibilityLabel={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             accessibilityState={{ expanded: !collapsed }}
-            style={[styles.toggle, showPressed && styles.itemPressed]}
+            style={[styles.toggle, { left: toggleLeft }, showPressed && styles.itemPressed]}
           >
             <View style={styles.toggleIcon} accessible={false} importantForAccessibility="no-hide-descendants">
-              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                <Path d="M5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3Z"
-                  stroke="black" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+                <Path d="M4.16667 2.5H15.8333C16.7538 2.5 17.5 3.24619 17.5 4.16667V15.8333C17.5 16.7538 16.7538 17.5 15.8333 17.5H4.16667C3.24619 17.5 2.5 16.7538 2.5 15.8333V4.16667C2.5 3.24619 3.24619 2.5 4.16667 2.5Z"
+                  stroke="black" strokeWidth={1.38889} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
               <Animated.View style={[styles.divider, { transform: [{ translateX: dividerX }] }]}>
-                <Image source={require('../images/sidebar-divider.svg')} style={styles.dividerImage} />
+                <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+                  <Path d="M7.5 2.5V17.5" stroke="black" strokeWidth={1.38889}
+                    strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
               </Animated.View>
             </View>
-          </Pressable>
+          </AnimatedPressable>
         </View>
         <View accessibilityRole="tablist">
           {ITEMS.map((item, index) => (
@@ -141,13 +151,14 @@ export default function Sidebar({ activeTab = 'home', onTabPress }) {
 const styles = StyleSheet.create({
   sidebar: { backgroundColor: colors.background, flexShrink: 0, overflow: 'hidden' },
   scrollContent: { paddingHorizontal: 16 },
-  brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 32 },
-  brandName: { ...typography.h2, color: colors.textPrimary, position: 'absolute', left: 0 },
-  toggle: { width: 48, height: 48, marginLeft: 'auto', alignItems: 'center', justifyContent: 'center', borderRadius: 26 },
-  toggleIcon: { width: 24, height: 24 },
-  divider: { position: 'absolute', left: 8, top: 2, width: 2, height: 20 },
-  dividerImage: { width: 2, height: 20 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 8, minHeight: 48 },
+  // Both children are absolute, so the header must reserve its own height.
+  brand: { height: 100, flexShrink: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brandName: { fontFamily: fontFamilies.bold, fontSize: 20, lineHeight: 24, color: colors.textPrimary, position: 'absolute', left: 0 },
+  toggle: { width: 36, height: 36, position: 'absolute', top: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 26 },
+  toggleIcon: { width: 20, height: 20 },
+  divider: { position: 'absolute', left: 0, top: 0, width: 20, height: 20 },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 8, minHeight: 44, overflow: 'hidden' },
+  itemIcon: { width: 20, height: 20, flexShrink: 0 },
   itemActive: { backgroundColor: colors.surface },
   itemPressed: { backgroundColor: colors.surfaceSubtle },
   label: { fontFamily: fontFamilies.medium, fontSize: 14, color: colors.textPrimary, flexShrink: 0 },

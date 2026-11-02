@@ -25,7 +25,7 @@ export const layout = {
   tabletBreakpoint: 768,
   desktopBreakpoint: 1200,
   sidebarWidth: 300,
-  sidebarCollapsedWidth: 80,
+  sidebarCollapsedWidth: 76,
   desktopAuthPaddingTop: 78,
   tabletScreenPadding: 40,
   tabletContentPaddingTop: 48,
