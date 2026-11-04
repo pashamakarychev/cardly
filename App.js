@@ -79,6 +79,7 @@ import LoginScreen from './screens/LoginScreen';
 import MainTabsScreen from './screens/MainTabsScreen';
 import NewPasswordScreen from './screens/NewPasswordScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import PrivacyScreen from './screens/PrivacyScreen';
 import ResetPasswordScreen from './screens/ResetPasswordScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
@@ -625,6 +626,12 @@ function AppContent({ userId, userEmail }) {
             )}
           </Stack.Screen>
           <Stack.Screen
+            name="Privacy"
+            options={{ title: 'Privacy policy' }}
+          >
+            {({ navigation }) => <PrivacyScreen onBack={() => navigation.goBack()} />}
+          </Stack.Screen>
+          <Stack.Screen
             name="ResetPassword"
             options={{ title: 'Reset password' }}
           >
@@ -720,6 +727,13 @@ function AppContent({ userId, userEmail }) {
                   userEmail,
                   onPreferencesChange: setPreferences,
                   onChangePassword: () => navigateTo('ChangePassword'),
+                  onPrivacyPress: () => {
+                    if (Platform.OS === 'web') {
+                      window.location.assign('/privacy');
+                    } else {
+                      navigateTo('Privacy');
+                    }
+                  },
                   onLogOut: signOut,
                   onBack: () => {
                     handleTabPress('home');
@@ -781,6 +795,14 @@ export default function App() {
 
   if (!fontsLoaded || !passwordRecovery.ready) {
     return null;
+  }
+
+  if (Platform.OS === 'web' && window.location.pathname === '/privacy') {
+    return <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <PrivacyScreen onBack={() => window.history.length > 1 ? window.history.back() : window.location.assign('/')} />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>;
   }
 
   return (

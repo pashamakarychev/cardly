@@ -29,7 +29,7 @@ function ChoiceRow({ label, value, onOpen, down }) {
   </View>;
 }
 
-export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail, onChangePassword, onLogOut }) {
+export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail, onChangePassword, onLogOut, onPrivacyPress }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
@@ -106,7 +106,7 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
         </View>
         <View style={styles.group}>
           <SettingsRow label="Analytics" trailing={<SettingsToggle value />} />
-          <SettingsRow label="Privacy Policy" trailing={<SettingsChevron />} />
+          <SettingsRow label="Privacy Policy" onPress={onPrivacyPress} />
         </View>
         <View style={styles.group}><SettingsRow label="Log out" danger onPress={() => setShowLogOutDialog(true)} /></View>
       </View>
