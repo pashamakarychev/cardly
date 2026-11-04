@@ -29,7 +29,7 @@ function ChoiceRow({ label, value, onOpen, down }) {
   </View>;
 }
 
-export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail, onChangePassword }) {
+export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail, onChangePassword, onLogOut }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
@@ -46,6 +46,7 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
   const [wordsPerDay, setWordsPerDay] = useState(preferences?.wordsPerDay ?? '10');
   const [picker, setPicker] = useState(null);
   const [languageDialog, setLanguageDialog] = useState(null);
+  const [showLogOutDialog, setShowLogOutDialog] = useState(false);
 
   useEffect(() => {
     if (!preferences) return;
@@ -107,7 +108,7 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
           <SettingsRow label="Analytics" trailing={<SettingsToggle value />} />
           <SettingsRow label="Privacy Policy" trailing={<SettingsChevron />} />
         </View>
-        <View style={styles.group}><SettingsRow label="Log out" danger /></View>
+        <View style={styles.group}><SettingsRow label="Log out" danger onPress={() => setShowLogOutDialog(true)} /></View>
       </View>
     </ScrollView>
     {!isTablet && <TopGradient fillHeight={insets.top} />}
@@ -123,6 +124,10 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
     <Dialog visible={languageDialog != null} title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}
       description={`Your ${languageDialog?.previousLanguage ?? ''} progress is saved. You can switch back anytime.`}
       onConfirm={() => setLanguageDialog(null)} />
+    <Dialog visible={showLogOutDialog} title="Log out?"
+      description="Are you sure you want to log out?" confirmLabel="Log out"
+      onCancel={() => setShowLogOutDialog(false)}
+      onConfirm={() => { setShowLogOutDialog(false); onLogOut?.(); }} />
   </View>;
 }
 

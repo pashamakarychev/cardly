@@ -72,6 +72,7 @@ import {
   requestPasswordReset,
   signInWithEmail,
   signUpWithEmail,
+  signOut,
   updatePassword,
 } from './lib/auth';
 import LoginScreen from './screens/LoginScreen';
@@ -719,6 +720,7 @@ function AppContent({ userId, userEmail }) {
                   userEmail,
                   onPreferencesChange: setPreferences,
                   onChangePassword: () => navigateTo('ChangePassword'),
+                  onLogOut: signOut,
                   onBack: () => {
                     handleTabPress('home');
                   },

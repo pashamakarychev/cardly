@@ -11,6 +11,8 @@ export default function Dialog({
   description,
   confirmLabel = 'Ok',
   onConfirm,
+  cancelLabel,
+  onCancel,
 }) {
   const fontScale = useFontScale();
 
@@ -19,13 +21,13 @@ export default function Dialog({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onConfirm}
+      onRequestClose={onCancel ?? onConfirm}
       accessibilityViewIsModal
     >
       <View style={styles.backdrop}>
         <Pressable
           style={StyleSheet.absoluteFill}
-          onPress={onConfirm}
+          onPress={onCancel ?? onConfirm}
           accessibilityRole="button"
           accessibilityLabel="Dismiss dialog"
         />
@@ -43,6 +45,14 @@ export default function Dialog({
             onPress={onConfirm}
             style={[styles.button, { height: 52 * fontScale }]}
           />
+          {onCancel && (
+            <Button
+              title={cancelLabel ?? 'Cancel'}
+              variant="secondary"
+              onPress={onCancel}
+              style={[styles.button, { height: 52 * fontScale }]}
+            />
+          )}
         </View>
       </View>
     </Modal>
