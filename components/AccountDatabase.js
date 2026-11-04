@@ -32,6 +32,7 @@ export default function AccountDatabase({ children }) {
       if (!active || version !== generation) return;
       setAccount({
         userId,
+        email: session?.user.email ?? null,
         name: legacy ? DATABASE_NAME : `cardly-${userId ?? 'guest'}.db`,
         initialize: async (db) => {
           await initDb(db);
@@ -53,7 +54,7 @@ export default function AccountDatabase({ children }) {
   if (!account) return null;
   return (
     <SQLiteProvider key={account.name} databaseName={account.name} assetSource={assetSource} onInit={account.initialize}>
-      {children(account.userId)}
+      {children(account.userId, account.email)}
     </SQLiteProvider>
   );
 }

@@ -1,40 +1,35 @@
-import { useSQLiteContext } from '../db/SQLiteProvider';
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { useSQLiteContext } from '../db/SQLiteProvider';
 import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
-import ChipSection from '../components/ChipSection';
 import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
+import SettingsPicker from '../components/SettingsPicker';
+import SettingsRow, { SettingsChevron, SettingsToggle } from '../components/SettingsRow';
 import TopGradient from '../components/TopGradient';
 import { ChevronLeftIcon } from '../components/icons/ChevronLeftIcon';
-import {
-  LEARN_LANGUAGES,
-  LEVELS,
-  SPEAK_LANGUAGES,
-  WORDS_PER_DAY,
-} from '../constants/preferences';
+import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { updateSettings } from '../db/repository';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
 import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
-// Bottom nav geometry (matches BottomNavigation + App nav overlay).
-const NAV_BOTTOM_PADDING = 16;
 const HEADER_HEIGHT = 48;
-// Gap between the fixed back row and the content column (Figma phone gap-[24px]).
-const HEADER_CONTENT_GAP = 24;
 
-export default function SettingsScreen({
-  preferences,
-  onPreferencesChange,
-  onBack,
-}) {
+function ChoiceRow({ label, value, onOpen, down }) {
+  const ref = useRef(null);
+  return <View ref={ref} collapsable={false}>
+    <SettingsRow label={label} value={value} down={down} onPress={() =>
+      ref.current?.measureInWindow((x, y, width, height) => onOpen({ x, y: y + height, width }))} />
+  </View>;
+}
+
+export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
@@ -42,21 +37,14 @@ export default function SettingsScreen({
   const fontScale = useFontScale();
   const headerHeight = HEADER_HEIGHT * fontScale;
   const navHeight = NAV_HEIGHT * fontScale;
-  const topInset = isTablet
-    ? Math.max(insets.top, layout.tabletScreenPadding)
-    : insets.top + layout.contentTopPadding;
-  const navBottom = isTablet
-    ? Math.max(insets.bottom, layout.tabletScreenPadding)
-    : insets.bottom + NAV_BOTTOM_PADDING;
-  const paddingHorizontal = isTablet
-    ? layout.tabletScreenPadding
-    : layout.screenPaddingX;
+  const topInset = isTablet ? Math.max(insets.top, layout.tabletScreenPadding) : insets.top + layout.contentTopPadding;
+  const navBottom = isTablet ? Math.max(insets.bottom, layout.tabletScreenPadding) : insets.bottom + 16;
+  const paddingHorizontal = isTablet ? layout.tabletScreenPadding : layout.screenPaddingX;
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
   const [level, setLevel] = useState(preferences?.level ?? 'Beginner');
-  const [wordsPerDay, setWordsPerDay] = useState(
-    preferences?.wordsPerDay ?? '10'
-  );
+  const [wordsPerDay, setWordsPerDay] = useState(preferences?.wordsPerDay ?? '10');
+  const [picker, setPicker] = useState(null);
   const [languageDialog, setLanguageDialog] = useState(null);
 
   useEffect(() => {
@@ -66,199 +54,91 @@ export default function SettingsScreen({
     setLevel(preferences.level);
     setWordsPerDay(preferences.wordsPerDay);
   }, [preferences]);
+  useEffect(() => setPicker(null), [isTablet, isDesktop]);
 
-  const updatePreferences = (patch) => {
-    onPreferencesChange?.({ speaks, learning, level, wordsPerDay, ...patch });
+  const notify = (patch) => onPreferencesChange?.({ speaks, learning, level, wordsPerDay, ...patch });
+  const choices = {
+    speaks: { label: 'I speak', options: SPEAK_LANGUAGES, selected: speaks, disabledOptions: [learning], onSelect: async (value) => {
+      if (value === learning || value === speaks) return;
+      setSpeaks(value); notify({ speaks: value }); await updateSettings(db, { nativeLanguage: value });
+    } },
+    learning: { label: 'I want to learn', options: LEARN_LANGUAGES, selected: learning, disabledOptions: [speaks], onSelect: async (value) => {
+      if (value === speaks || value === learning) return;
+      const previousLanguage = learning;
+      setLearning(value); notify({ learning: value }); await updateSettings(db, { learningLanguage: value });
+      setLanguageDialog({ previousLanguage, nextLanguage: value });
+    } },
+    level: { label: 'My level', options: LEVELS, selected: level, onSelect: async (value) => {
+      if (value === level) return;
+      setLevel(value); notify({ level: value }); await updateSettings(db, { level: value });
+    } },
+    wordsPerDay: { label: 'New words per day', options: WORDS_PER_DAY, selected: wordsPerDay, onSelect: async (value) => {
+      if (value === wordsPerDay) return;
+      setWordsPerDay(value); notify({ wordsPerDay: value }); await updateSettings(db, { newWordsPerDay: value });
+    } },
   };
+  const choice = picker && choices[picker.key];
+  const open = (key, anchor) => setPicker({ key, anchor });
 
-  const handleSpeaksSelect = async (value) => {
-    setSpeaks(value);
-    updatePreferences({ speaks: value });
-    await updateSettings(db, { nativeLanguage: value });
-  };
-
-  const handleLearningSelect = async (value) => {
-    if (value === learning) {
-      return;
-    }
-
-    const previousLanguage = learning;
-    setLearning(value);
-    updatePreferences({ learning: value });
-    await updateSettings(db, { learningLanguage: value });
-    setLanguageDialog({ previousLanguage, nextLanguage: value });
-  };
-
-  const handleLevelSelect = async (value) => {
-    setLevel(value);
-    updatePreferences({ level: value });
-    await updateSettings(db, { level: value });
-  };
-
-  const handleWordsPerDaySelect = async (value) => {
-    setWordsPerDay(value);
-    updatePreferences({ wordsPerDay: value });
-    await updateSettings(db, { newWordsPerDay: value });
-  };
-
-  // Phone: clears the fixed header + gap. Tablet: Figma centers the column in
-  // the padded screen; the back button is an overlay and does not consume flow.
-  const scrollPaddingTop = isTablet
-    ? topInset
-    : topInset + headerHeight + HEADER_CONTENT_GAP;
-
-  const chipSections = (
-    <>
-      <ChipSection
-        label="I speak"
-        options={SPEAK_LANGUAGES}
-        selected={speaks}
-        onSelect={handleSpeaksSelect}
-        disabledOptions={learning ? [learning] : []}
-      />
-      <ChipSection
-        label="I want to learn"
-        options={LEARN_LANGUAGES}
-        selected={learning}
-        onSelect={handleLearningSelect}
-        disabledOptions={speaks ? [speaks] : []}
-      />
-      <ChipSection
-        label="My level"
-        gap={24}
-        options={LEVELS}
-        selected={level}
-        onSelect={handleLevelSelect}
-      />
-      <ChipSection
-        label="New words per day"
-        gap={24}
-        options={WORDS_PER_DAY}
-        selected={wordsPerDay}
-        onSelect={handleWordsPerDaySelect}
-      />
-    </>
-  );
-
-  return (
-    <View style={styles.screen}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          isTablet && styles.scrollContentTablet,
-          {
-            paddingTop: scrollPaddingTop,
-            paddingHorizontal,
-            paddingBottom: isDesktop ? Math.max(insets.bottom, layout.tabletScreenPadding)
-              : navBottom + navHeight + layout.contentToOverlayGap,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
-          {isTablet && (
-            <AccessibleText
-              style={styles.tabletTitle}
-              accessibilityRole="header"
-            >
-              Settings
-            </AccessibleText>
-          )}
-          {chipSections}
+  return <View style={[styles.screen, Platform.OS === 'web' && styles.webScreen]}>
+    <ScrollView style={[styles.scroll, Platform.OS === 'web' && styles.webScroll]} contentContainerStyle={[
+      styles.scrollContent, isTablet && styles.scrollContentTablet,
+      { paddingTop: isTablet ? topInset : topInset + headerHeight + 24, paddingHorizontal,
+        paddingBottom: isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) + navHeight + layout.contentToOverlayGap : navBottom + navHeight + layout.contentToOverlayGap },
+    ]} showsVerticalScrollIndicator={false}>
+      <View style={styles.container}>
+        {isTablet && <AccessibleText style={styles.tabletTitle} accessibilityRole="header">Settings</AccessibleText>}
+        <View style={styles.group}>
+          <View style={styles.accountRow}>
+            <AccessibleText style={styles.accountTitle}>Account</AccessibleText>
+            <AccessibleText style={styles.accountEmail} numberOfLines={1}>{userEmail ?? ''}</AccessibleText>
+          </View>
+          <SettingsRow label="Change password" trailing={<SettingsChevron />} />
         </View>
-      </ScrollView>
-
-      {/* Phone only — tablet Settings has no top gradient in Figma. */}
-      {!isTablet && <TopGradient fillHeight={insets.top} />}
-      {!isDesktop && <View
-        pointerEvents="box-none"
-        style={[
-          styles.header,
-          { top: topInset, height: headerHeight, paddingHorizontal },
-        ]}
-      >
-        {isTablet ? (
-          <IconButton
-            icon={<ChevronLeftIcon />}
-            onPress={onBack}
-            accessibilityLabel="Back"
-          />
-        ) : (
-          <>
-            <IconButton
-              icon={<ChevronLeftIcon />}
-              onPress={onBack}
-              accessibilityLabel="Back"
-            />
-            <AccessibleText style={styles.title} accessibilityRole="header">
-              Settings
-            </AccessibleText>
-            {/* Balances the back button so the title stays visually centered. */}
-            <View
-              style={[
-                styles.headerSpacer,
-                { height: headerHeight, width: headerHeight },
-              ]}
-              accessible={false}
-              importantForAccessibility="no-hide-descendants"
-            />
-          </>
-        )}
-      </View>}
-
-      {/* Fade across the nav; fill covers the bottom safe zone under it. */}
-      <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : navBottom} height={navHeight} />
-      <Dialog
-        visible={languageDialog != null}
-        title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}
-        description={`Your ${languageDialog?.previousLanguage ?? ''} progress is saved. You can switch back anytime.`}
-        onConfirm={() => setLanguageDialog(null)}
-      />
-    </View>
-  );
+        <View style={styles.group}>
+          <ChoiceRow label="I speak" value={speaks} down={isTablet} onOpen={(anchor) => open('speaks', anchor)} />
+          <ChoiceRow label="I want to learn" value={learning} down={isTablet} onOpen={(anchor) => open('learning', anchor)} />
+          <ChoiceRow label="My level" value={level} down={isTablet} onOpen={(anchor) => open('level', anchor)} />
+        </View>
+        <View style={styles.group}>
+          <ChoiceRow label="New words per day" value={wordsPerDay} down={isTablet} onOpen={(anchor) => open('wordsPerDay', anchor)} />
+        </View>
+        <View style={styles.group}>
+          <SettingsRow label="Analytics" trailing={<SettingsToggle value />} />
+          <SettingsRow label="Privacy Policy" trailing={<SettingsChevron />} />
+        </View>
+        <View style={styles.group}><SettingsRow label="Log out" danger /></View>
+      </View>
+    </ScrollView>
+    {!isTablet && <TopGradient fillHeight={insets.top} />}
+    {!isDesktop && <View pointerEvents="box-none" style={[styles.header, { top: topInset, height: headerHeight, paddingHorizontal }]}>
+      <IconButton icon={<ChevronLeftIcon />} onPress={onBack} accessibilityLabel="Back" />
+      {!isTablet && <AccessibleText style={styles.title} accessibilityRole="header">Settings</AccessibleText>}
+      {!isTablet && <View style={{ width: headerHeight }} />}
+    </View>}
+    <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : navBottom} height={navHeight} />
+    <SettingsPicker visible={!!choice} options={choice?.options ?? []} selected={choice?.selected}
+      disabledOptions={choice?.disabledOptions} onSelect={choice?.onSelect} onClose={() => setPicker(null)}
+      mobile={!isTablet} anchor={picker?.anchor} />
+    <Dialog visible={languageDialog != null} title={`You're now learning ${languageDialog?.nextLanguage ?? ''}`}
+      description={`Your ${languageDialog?.previousLanguage ?? ''} progress is saved. You can switch back anytime.`}
+      onConfirm={() => setLanguageDialog(null)} />
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.surface,
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    alignItems: 'center',
-    flexGrow: 1,
-  },
-  // Figma tablet: justify-center p-[40px] — column sits in the middle.
-  scrollContentTablet: {
-    justifyContent: 'center',
-  },
-  container: {
-    gap: 24,
-    maxWidth: layout.maxContentWidth,
-    width: '100%',
-  },
-  // Figma tablet title is centered in the 600px column (not a back-row pair).
-  tabletTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    width: '100%',
-  },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    zIndex: 1,
-  },
-  headerSpacer: {},
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
+  screen: { backgroundColor: colors.surface, flex: 1 },
+  webScreen: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  scroll: { flex: 1 },
+  webScroll: { overscrollBehaviorY: 'none' },
+  scrollContent: { alignItems: 'center', flexGrow: 1 },
+  scrollContentTablet: { justifyContent: 'center' },
+  container: { gap: 24, maxWidth: layout.maxContentWidth, width: '100%' },
+  group: { backgroundColor: colors.background, borderRadius: 32, overflow: 'hidden', width: '100%' },
+  accountRow: { justifyContent: 'center', minHeight: 80, paddingHorizontal: 24, paddingVertical: 12, gap: 4 },
+  accountTitle: { ...typography.h3, color: colors.textPrimary },
+  accountEmail: { ...typography.caption, lineHeight: 20, color: colors.textSecondary },
+  tabletTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center', width: '100%' },
+  header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', left: 0, position: 'absolute', right: 0, zIndex: 1 },
+  title: { ...typography.h2, color: colors.textPrimary },
 });

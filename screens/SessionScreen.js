@@ -201,6 +201,7 @@ export default function SessionScreen({
         ]}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        overScrollMode="never"
         keyboardShouldPersistTaps="handled"
       >
         {/* Compact column; phone spacer shrinks before the screen scrolls. */}

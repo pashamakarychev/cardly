@@ -13,7 +13,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useSQLiteContext } from './db/SQLiteProvider';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { BackHandler, StyleSheet, View } from 'react-native';
+import { BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -101,7 +101,7 @@ const MAIN_ROUTE = 'Main';
 // Screen state must live inside SQLiteProvider's children. The provider is
 // memoized without comparing children, so updating screens from the parent
 // would not trigger a re-render.
-function AppContent({ userId }) {
+function AppContent({ userId, userEmail }) {
   // Context reaches the screens even when SQLiteProvider memoizes its children.
   const { recoveryUserId, completeRecovery: onRecoveryComplete } = useContext(PasswordRecoveryContext);
   const db = useSQLiteContext();
@@ -699,6 +699,7 @@ function AppContent({ userId }) {
                 }}
                 settingsProps={{
                   preferences,
+                  userEmail,
                   onPreferencesChange: setPreferences,
                   onBack: () => {
                     handleTabPress('home');
@@ -763,10 +764,10 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={[styles.root, Platform.OS === 'web' && styles.webRoot]}>
       <SafeAreaProvider>
         <PasswordRecoveryContext.Provider value={passwordRecovery}>
-          <AccountDatabase>{(userId) => <AppContent userId={userId} />}</AccountDatabase>
+          <AccountDatabase>{(userId, userEmail) => <AppContent userId={userId} userEmail={userEmail} />}</AccountDatabase>
         </PasswordRecoveryContext.Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -776,6 +777,10 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  webRoot: {
+    overflow: 'hidden',
+    overscrollBehavior: 'none',
   },
   card: {
     backgroundColor: colors.surface,

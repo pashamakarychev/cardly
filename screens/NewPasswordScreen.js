@@ -74,6 +74,8 @@ export default function NewPasswordScreen({ onResetPassword }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          bounces={false}
+          overScrollMode="never"
           style={styles.flex}
           contentContainerStyle={[
             styles.scrollContent,

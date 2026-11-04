@@ -38,6 +38,8 @@ export default function SessionCompleteScreen({
   return (
     <View style={styles.screen}>
       <ScrollView
+        bounces={false}
+        overScrollMode="never"
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,

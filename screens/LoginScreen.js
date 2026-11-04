@@ -71,6 +71,8 @@ export default function LoginScreen({ onLogIn, onSignUpPress, onForgotPasswordPr
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          bounces={false}
+          overScrollMode="never"
           style={styles.flex}
           contentContainerStyle={[
             styles.scrollContent,

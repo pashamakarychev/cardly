@@ -102,7 +102,7 @@ export default function Sidebar({ activeTab = 'home', onTabPress }) {
 
   return (
     <Animated.View style={[styles.sidebar, { width }]}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <ScrollView bounces={false} overScrollMode="never" contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.brand}>
           <Animated.Text pointerEvents="none" numberOfLines={1} accessibilityRole="header"
             aria-hidden={collapsed} accessibilityElementsHidden={collapsed}
