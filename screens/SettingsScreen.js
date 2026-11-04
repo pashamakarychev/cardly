@@ -29,7 +29,7 @@ function ChoiceRow({ label, value, onOpen, down }) {
   </View>;
 }
 
-export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail }) {
+export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail, onChangePassword }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
@@ -93,7 +93,7 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
             <AccessibleText style={styles.accountTitle}>Account</AccessibleText>
             <AccessibleText style={styles.accountEmail} numberOfLines={1}>{userEmail ?? ''}</AccessibleText>
           </View>
-          <SettingsRow label="Change password" trailing={<SettingsChevron />} />
+          <SettingsRow label="Change password" onPress={onChangePassword} />
         </View>
         <View style={styles.group}>
           <ChoiceRow label="I speak" value={speaks} down={isTablet} onOpen={(anchor) => open('speaks', anchor)} />

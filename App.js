@@ -634,6 +634,23 @@ function AppContent({ userId, userEmail }) {
             )}
           </Stack.Screen>
           <Stack.Screen
+            name="ChangePassword"
+            options={{ title: 'Create a new password' }}
+          >
+            {({ navigation }) => (
+              <NewPasswordScreen
+                requireCurrentPassword
+                onForgotPasswordPress={() => navigation.navigate('ResetPassword')}
+                onResetPassword={async (password, currentPassword) => {
+                  await updatePassword(password, currentPassword);
+                  if (navigation.isFocused()) {
+                    navigation.goBack();
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen
             name="NewPassword"
             options={{ title: 'Create a new password' }}
           >
@@ -701,6 +718,7 @@ function AppContent({ userId, userEmail }) {
                   preferences,
                   userEmail,
                   onPreferencesChange: setPreferences,
+                  onChangePassword: () => navigateTo('ChangePassword'),
                   onBack: () => {
                     handleTabPress('home');
                   },

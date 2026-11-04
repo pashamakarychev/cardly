@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -20,10 +21,17 @@ import { colors, layout, typography } from '../theme';
 const PHONE_SPACER_HEIGHT = 137;
 const NEW_PASSWORD_CONTENT_WIDTH = 375;
 
-export default function NewPasswordScreen({ onResetPassword }) {
+export default function NewPasswordScreen({
+  onResetPassword,
+  requireCurrentPassword = false,
+  onForgotPasswordPress,
+}) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const isDesktop = useIsDesktop();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [currentVisible, setCurrentVisible] = useState(false);
+  const [currentError, setCurrentError] = useState(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -36,6 +44,9 @@ export default function NewPasswordScreen({ onResetPassword }) {
     if (submitting) {
       return;
     }
+    const nextCurrentError = requireCurrentPassword && currentPassword === ''
+      ? 'Enter your current password.'
+      : null;
     const nextPasswordError =
       password === '' ? 'Enter your new password.' : null;
     const nextConfirmError =
@@ -44,16 +55,21 @@ export default function NewPasswordScreen({ onResetPassword }) {
         : password !== '' && password !== confirmPassword
           ? 'Passwords do not match.'
           : null;
+    setCurrentError(nextCurrentError);
     setPasswordError(nextPasswordError);
     setConfirmError(nextConfirmError);
-    if (nextPasswordError != null || nextConfirmError != null) {
+    if (nextCurrentError || nextPasswordError || nextConfirmError) {
       return;
     }
     setSubmitting(true);
     try {
-      await onResetPassword?.(password);
+      await onResetPassword?.(password, requireCurrentPassword ? currentPassword : undefined);
     } catch (authError) {
-      setPasswordError(authError?.message ?? 'Could not reset password.');
+      if (requireCurrentPassword && ['invalid_credentials', 'invalid_current_password'].includes(authError?.code)) {
+        setCurrentError('Current password is incorrect.');
+      } else {
+        setPasswordError(authError?.message ?? 'Could not reset password.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -79,7 +95,7 @@ export default function NewPasswordScreen({ onResetPassword }) {
           style={styles.flex}
           contentContainerStyle={[
             styles.scrollContent,
-            isTablet && styles.scrollContentTablet,
+            (isTablet || requireCurrentPassword) && styles.scrollContentCentered,
             {
               paddingTop,
               paddingBottom,
@@ -89,12 +105,29 @@ export default function NewPasswordScreen({ onResetPassword }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.content, !isTablet && styles.contentPhone]}>
-            {!isTablet && <View style={styles.spacer} />}
+          <View style={[styles.content, !isTablet && !requireCurrentPassword && styles.contentPhone]}>
+            {!isTablet && !requireCurrentPassword && <View style={styles.spacer} />}
             <View style={styles.form}>
               <AccessibleText style={styles.title} accessibilityRole="header">
                 Create a new password
               </AccessibleText>
+              {requireCurrentPassword && (
+                <TextField
+                  value={currentPassword}
+                  onChangeText={(value) => {
+                    setCurrentPassword(value);
+                    setCurrentError(null);
+                  }}
+                  placeholder="Current password"
+                  secureTextEntry={!currentVisible}
+                  autoComplete="current-password"
+                  textContentType="password"
+                  rightIcon={currentVisible ? <EyeIcon /> : <EyeOffIcon />}
+                  onRightIconPress={() => setCurrentVisible((visible) => !visible)}
+                  rightIconAccessibilityLabel={currentVisible ? 'Hide current password' : 'Show current password'}
+                  error={currentError}
+                />
+              )}
               <TextField
                 value={password}
                 onChangeText={(value) => {
@@ -141,6 +174,16 @@ export default function NewPasswordScreen({ onResetPassword }) {
                 disabled={submitting}
                 onPress={handleResetPassword}
               />
+              {onForgotPasswordPress && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Forgot password?"
+                  disabled={submitting}
+                  onPress={onForgotPasswordPress}
+                >
+                  <AccessibleText style={styles.link}>Forgot password?</AccessibleText>
+                </Pressable>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -161,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexGrow: 1,
   },
-  scrollContentTablet: {
+  scrollContentCentered: {
     justifyContent: 'center',
   },
   content: {
@@ -187,6 +230,10 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h2,
+    color: colors.textPrimary,
+  },
+  link: {
+    ...typography.body,
     color: colors.textPrimary,
   },
 });
