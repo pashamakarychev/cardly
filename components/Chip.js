@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSubtle,
   },
   label: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.textPrimary,
   },
   labelSelected: {

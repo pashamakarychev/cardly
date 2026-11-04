@@ -3,7 +3,7 @@ import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFontScale } from '../hooks/useFontScale';
-import { colors, fontFamilies, layout } from '../theme';
+import { colors, layout, typography } from '../theme';
 import { HomeIcon } from './icons/HomeIcon';
 import { SettingsIcon } from './icons/SettingsIcon';
 import { useDelayedPressed } from './useDelayedPressed';
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 16 },
   // Both children are absolute, so the header must reserve its own height.
   brand: { height: 100, flexShrink: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brandName: { fontFamily: fontFamilies.bold, fontSize: 20, lineHeight: 24, color: colors.textPrimary, position: 'absolute', left: 0 },
+  brandName: { ...typography.logo, color: colors.textPrimary, position: 'absolute', left: 0 },
   toggle: { width: 36, height: 36, position: 'absolute', top: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 26 },
   toggleIcon: { width: 20, height: 20 },
   divider: { position: 'absolute', left: 0, top: 0, width: 20, height: 20 },
@@ -161,6 +161,6 @@ const styles = StyleSheet.create({
   itemIcon: { width: 20, height: 20, flexShrink: 0 },
   itemActive: { backgroundColor: colors.surface },
   itemPressed: { backgroundColor: colors.surfaceSubtle },
-  label: { fontFamily: fontFamilies.medium, fontSize: 14, color: colors.textPrimary, flexShrink: 0 },
+  label: { ...typography.navSidebar, color: colors.textPrimary, flexShrink: 0 },
   labelActive: { color: colors.primary },
 });
