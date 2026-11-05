@@ -14,7 +14,7 @@ export default function AnalyticsConsentDialog({ visible, onAccept, onDecline, o
           <AccessibleText style={styles.title} accessibilityRole="header">We use analytics to improve the app</AccessibleText>
           <AccessibleText style={styles.description}>You can turn it off anytime in settings</AccessibleText>
           <Pressable onPress={onPrivacyPress} accessibilityRole="link" accessibilityLabel="Privacy policy">
-            <AccessibleText style={styles.description}>Privacy policy</AccessibleText>
+            <AccessibleText style={[styles.description, styles.privacyLink]}>Privacy policy</AccessibleText>
           </Pressable>
         </View>
         <Button title="Accept" onPress={onAccept} size="medium" style={{ height: 52 * fontScale }} />
@@ -30,4 +30,5 @@ const styles = StyleSheet.create({
   message: { gap: 16, padding: 16 },
   title: { ...typography.h3, color: colors.textPrimary },
   description: { ...typography.caption, color: colors.textSecondary },
+  privacyLink: { textDecorationLine: 'underline' },
 });
