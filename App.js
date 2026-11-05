@@ -854,7 +854,7 @@ export default function App() {
   }
 
   if (Platform.OS === 'web' && window.location.pathname === '/privacy') {
-    return <GestureHandlerRootView style={styles.root}>
+    return <GestureHandlerRootView style={styles.webPrivacyRoot}>
       <SafeAreaProvider>
         <PrivacyScreen onBack={() => window.history.length > 1 ? window.history.back() : window.location.assign('/')} />
       </SafeAreaProvider>
@@ -879,6 +879,10 @@ const styles = StyleSheet.create({
   webRoot: {
     overflow: 'hidden',
     overscrollBehavior: 'none',
+  },
+  webPrivacyRoot: {
+    ...StyleSheet.absoluteFillObject,
+    position: 'fixed',
   },
   card: {
     backgroundColor: colors.surface,

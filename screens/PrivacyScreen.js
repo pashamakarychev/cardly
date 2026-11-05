@@ -1,4 +1,4 @@
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AccessibleText from '../components/AccessibleText';
@@ -48,8 +48,8 @@ const sections = [
 export default function PrivacyScreen({ onBack }) {
   const insets = useSafeAreaInsets();
 
-  return <View style={styles.screen}>
-    <ScrollView contentContainerStyle={[styles.content, {
+  return <View style={[styles.screen, Platform.OS === 'web' && StyleSheet.absoluteFill]}>
+    <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, {
       paddingTop: Math.max(insets.top, 24) + 24,
       paddingBottom: Math.max(insets.bottom, 32) + 32,
     }]}>
@@ -82,6 +82,7 @@ export default function PrivacyScreen({ onBack }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
+  scroll: { flex: 1, minHeight: 0 },
   content: { alignSelf: 'center', maxWidth: 720, width: '100%', paddingHorizontal: 24, gap: 20 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   title: { ...typography.h2, color: colors.textPrimary, flexShrink: 1 },
