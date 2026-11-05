@@ -664,6 +664,7 @@ function AppContent({ userId, userEmail }) {
                 onSignUp={async (email, password) => {
                   await signUpWithEmail(email, password);
                 }}
+                onPrivacyPress={() => navigateTo('Privacy')}
                 onLogInPress={() => {
                   navigateTo('Login', { from: 'left' });
                 }}

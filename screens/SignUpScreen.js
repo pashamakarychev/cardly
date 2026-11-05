@@ -24,7 +24,7 @@ const PHONE_SPACER_HEIGHT = 137;
 const SIGN_UP_CONTENT_WIDTH = 375;
 const APP_ICON_SIZE = 64;
 
-export default function SignUpScreen({ onSignUp, onLogInPress }) {
+export default function SignUpScreen({ onSignUp, onLogInPress, onPrivacyPress }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
   const isDesktop = useIsDesktop();
@@ -59,7 +59,10 @@ export default function SignUpScreen({ onSignUp, onLogInPress }) {
   const paddingTop = isDesktop ? Math.max(insets.top, layout.desktopAuthPaddingTop) : isTablet
     ? Math.max(insets.top, layout.tabletScreenPadding)
     : insets.top + layout.contentTopPadding;
-  const paddingBottom = Math.max(insets.bottom, layout.screenPaddingBottom);
+  const paddingBottom = Math.max(
+    insets.bottom,
+    isTablet ? layout.tabletScreenPadding : layout.screenPaddingBottom
+  );
   const paddingHorizontal = isTablet
     ? layout.tabletScreenPadding
     : layout.screenPaddingX;
@@ -76,7 +79,6 @@ export default function SignUpScreen({ onSignUp, onLogInPress }) {
           style={styles.flex}
           contentContainerStyle={[
             styles.scrollContent,
-            isTablet && styles.scrollContentTablet,
             {
               paddingTop,
               paddingBottom,
@@ -86,7 +88,7 @@ export default function SignUpScreen({ onSignUp, onLogInPress }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.content, !isTablet && styles.contentPhone]}>
+          <View style={[styles.content, isTablet && styles.contentCentered]}>
             {!isTablet && <View style={styles.spacer} />}
             <View style={styles.logoWrap}>
               <Image
@@ -150,6 +152,23 @@ export default function SignUpScreen({ onSignUp, onLogInPress }) {
               </View>
             </View>
           </View>
+          <Text style={styles.acknowledgment}>
+            {'By signing up, you acknowledge our '}
+            <Text
+              accessibilityRole="link"
+              href={Platform.OS === 'web' ? '/privacy' : undefined}
+              onPress={(event) => {
+                if (Platform.OS === 'web') {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                }
+                onPrivacyPress();
+              }}
+              style={styles.privacyLink}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -167,18 +186,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
-  },
-  scrollContentTablet: {
-    justifyContent: 'center',
+    gap: 24,
   },
   content: {
     alignItems: 'center',
+    flexGrow: 1,
     gap: 24,
     maxWidth: SIGN_UP_CONTENT_WIDTH,
     width: '100%',
   },
-  contentPhone: {
-    flexGrow: 1,
+  contentCentered: {
+    justifyContent: 'center',
   },
   spacer: {
     flexGrow: 1,
@@ -222,5 +240,13 @@ const styles = StyleSheet.create({
   },
   login: {
     color: colors.primary,
+  },
+  acknowledgment: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  privacyLink: {
+    textDecorationLine: 'underline',
   },
 });
