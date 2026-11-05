@@ -127,6 +127,7 @@ export async function getLearningLanguage(db) {
 }
 
 export async function completeOnboarding(db, values) {
+  const analytics = (await getSettings(db))?.analytics ?? 'unknown';
   await writeWithSync(db, 'settings', { id: 1 }, (transaction) =>
     queries.completeOnboarding(transaction, values));
   cache.forDatabase(db).setSettingsCache({
@@ -135,11 +136,15 @@ export async function completeOnboarding(db, values) {
     level: values.level,
     new_words_per_day: values.newWordsPerDay,
     onboarding_completed: 1,
+    analytics,
   });
   await ensureSelectedWordsCache(db);
 }
 
 export async function updateSettings(db, values) {
+  if (values.analytics != null && !['accepted', 'rejected'].includes(values.analytics)) {
+    throw new Error('Invalid analytics setting');
+  }
   await writeWithSync(db, 'settings', { id: 1 }, (transaction) =>
     queries.updateSettings(transaction, values));
 
@@ -155,6 +160,9 @@ export async function updateSettings(db, values) {
   }
   if (values.newWordsPerDay != null) {
     patch.new_words_per_day = Number(values.newWordsPerDay);
+  }
+  if (values.analytics != null) {
+    patch.analytics = values.analytics;
   }
   cache.forDatabase(db).patchSettingsCache(patch);
   if (patch.learning_language != null) {

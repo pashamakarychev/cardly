@@ -2,6 +2,7 @@
 // local storage on first launch via assetSource, then runs initDb.
 
 import { configureConnection } from './repository';
+import { migrateLocalDatabase } from './migrations';
 
 export const DATABASE_NAME = 'cardly.db';
 
@@ -17,4 +18,5 @@ export const WORD_STATES = {
 export async function initDb(db) {
   // Must be enabled on every connection, not just at creation time
   await configureConnection(db);
+  await migrateLocalDatabase(db);
 }

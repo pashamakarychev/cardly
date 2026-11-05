@@ -21,11 +21,11 @@ const sections = [
   },
   {
     heading: 'Analytics',
-    body: 'Native Cardly builds use Microsoft Clarity to understand how people interact with the app. Clarity may collect interaction events, device and app information, and session replays. This can include screens you visit and actions you take. Clarity is not initialized by Cardly on the web. The Analytics control currently shown in Settings does not change data collection.',
+    body: 'With your permission, native Cardly builds use Microsoft Clarity to understand how people interact with the app. Clarity may collect interaction events, device and app information, and session replays. This can include screens you visit and actions you take. Clarity is not initialized by Cardly on the web. You can enable or disable Clarity at any time using the Analytics switch in Settings.',
   },
   {
     heading: 'Why we process data',
-    body: 'We use account and study data to provide the service, authenticate you, save and synchronize your progress, and respond to password reset requests. Where applicable, the legal basis is performance of our service agreement. We use operational information to maintain security and reliability. We use Clarity to improve the app; the applicable legal basis and any consent requirement depend on your location.',
+    body: 'We use account and study data to provide the service, authenticate you, save and synchronize your progress, and respond to password reset requests. Where applicable, the legal basis is performance of our service agreement. We use operational information to maintain security and reliability. We use Clarity to improve the app only when you accept analytics.',
   },
   {
     heading: 'Service providers and transfers',

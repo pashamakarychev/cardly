@@ -18,10 +18,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomNavigation, { TAB_KEYS } from './components/BottomNavigation';
+import AnalyticsConsentDialog from './components/AnalyticsConsentDialog';
 import { WORD_STATES } from './db/database';
-import { getSettings, subscribeToDatabase } from './db/repository';
+import { getSettings, subscribeToDatabase, updateSettings } from './db/repository';
 import AccountDatabase from './components/AccountDatabase';
 import { startSync, syncDatabase } from './lib/sync';
+import { applyAnalyticsPreference } from './lib/analytics';
 import {
   ADDED_AS,
   EXERCISE_SOURCES,
@@ -118,6 +120,10 @@ function AppContent({ userId, userEmail }) {
   const tabsRef = useRef(null);
   const [sessionMode, setSessionMode] = useState(SESSION_MODES.EXERCISE);
   const [preferences, setPreferences] = useState(null);
+  const [consentVisible, setConsentVisible] = useState(false);
+  const analyticsReady = useRef(false);
+  const consentSaving = useRef(false);
+  useEffect(() => () => { applyAnalyticsPreference('rejected').catch(console.error); }, [db]);
   const [currentWord, setCurrentWord] = useState(null);
   const [newWord, setNewWord] = useState(null);
   const [progress, setProgress] = useState(0);
@@ -183,16 +189,34 @@ function AppContent({ userId, userEmail }) {
       learning: settings.learning_language,
       level: settings.level,
       wordsPerDay: String(settings.new_words_per_day),
+      analytics: settings.analytics ?? 'unknown',
     });
     await loadLevelCompleted();
     return true;
   };
 
   const enterAuthenticatedApp = async ({ replace = false, isActive = () => true } = {}) => {
-    await syncDatabase(db).catch(() => {}); // Offline sessions keep using local data.
+    const syncAttempt = syncDatabase(db).catch(() => {});
     const settings = await getSettings(db);
     const hasSettings = await applySettings(settings);
     if (!isActive()) return;
+    syncAttempt.then(async () => {
+      if (!isActive()) return;
+      const syncedSettings = await getSettings(db);
+      if (!isActive()) return;
+      analyticsReady.current = true;
+      applyAnalyticsPreference(syncedSettings?.analytics).catch(console.error);
+      setConsentVisible(syncedSettings?.onboarding_completed === 1 && (syncedSettings?.analytics ?? 'unknown') === 'unknown');
+      if (!hasSettings && syncedSettings?.onboarding_completed === 1) {
+        await applySettings(syncedSettings);
+        setActiveTab('home');
+        if (navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: MAIN_ROUTE }] });
+        } else {
+          setInitialRoute(MAIN_ROUTE);
+        }
+      }
+    }).catch(console.error);
     if (hasSettings) {
       setActiveTab('home');
       if (replace) {
@@ -245,9 +269,29 @@ function AppContent({ userId, userEmail }) {
 
   useEffect(() => subscribeToDatabase(db, (source) => {
     if (source === 'remote') {
-      getSettings(db).then(applySettings).then(refreshHomeStats).catch(console.error);
+      getSettings(db).then(async (settings) => {
+        if (analyticsReady.current) {
+          applyAnalyticsPreference(settings?.analytics).catch(console.error);
+          setConsentVisible(settings?.onboarding_completed === 1 && (settings?.analytics ?? 'unknown') === 'unknown');
+        }
+        await applySettings(settings);
+        await refreshHomeStats();
+      }).catch(console.error);
     }
   }), [db, refreshHomeStats]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chooseAnalytics = async (analytics) => {
+    if (consentSaving.current) return;
+    consentSaving.current = true;
+    try {
+      await updateSettings(db, { analytics });
+      setPreferences((current) => current && ({ ...current, analytics }));
+      setConsentVisible(false);
+      applyAnalyticsPreference(analytics).catch(console.error);
+    } finally {
+      consentSaving.current = false;
+    }
+  };
 
   // Next step prepared while the answer feedback and card transition play,
   // so the round can advance in the same batch as the card slot swap.
@@ -489,6 +533,7 @@ function AppContent({ userId, userEmail }) {
     syncDatabase(db).catch(() => {});
     const routeName = navigationRef.getCurrentRoute()?.name;
     if (routeName === MAIN_ROUTE) {
+      if (analyticsReady.current && preferences?.analytics === 'unknown') setConsentVisible(true);
       setActiveTab((tab) => {
         const next = tab ?? 'home';
         announceForAccessibility(tabAnnouncement(next));
@@ -679,8 +724,9 @@ function AppContent({ userId, userEmail }) {
             {() => (
               <OnboardingScreen
                 onContinue={(prefs) => {
-                  setPreferences(prefs);
+                  setPreferences({ ...prefs, analytics: 'unknown' });
                   setActiveTab('home');
+                  if (analyticsReady.current) setConsentVisible(true);
                   // Main becomes the new root; back must not return here.
                   // Arriving at Main triggers the stats refresh.
                   navigationRef.reset({
@@ -726,6 +772,9 @@ function AppContent({ userId, userEmail }) {
                   preferences,
                   userEmail,
                   onPreferencesChange: setPreferences,
+                  onAnalyticsChange: (analytics) => {
+                    if (analyticsReady.current) applyAnalyticsPreference(analytics).catch(console.error);
+                  },
                   onChangePassword: () => navigateTo('ChangePassword'),
                   onPrivacyPress: () => {
                     if (Platform.OS === 'web') {
@@ -734,7 +783,10 @@ function AppContent({ userId, userEmail }) {
                       navigateTo('Privacy');
                     }
                   },
-                  onLogOut: signOut,
+                  onLogOut: async () => {
+                    await applyAnalyticsPreference('rejected').catch(console.error);
+                    await signOut();
+                  },
                   onBack: () => {
                     handleTabPress('home');
                   },
@@ -761,6 +813,9 @@ function AppContent({ userId, userEmail }) {
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
+      <AnalyticsConsentDialog visible={consentVisible} onAccept={() => chooseAnalytics('accepted').catch(console.error)}
+        onDecline={() => chooseAnalytics('rejected').catch(console.error)}
+        onPrivacyPress={() => { setConsentVisible(false); navigateTo('Privacy'); }} />
       {activeTab != null && !isDesktop && (
         <View pointerEvents="box-none" style={styles.navOverlay}>
           <View

@@ -2,6 +2,13 @@
 // Callers pass the expo-sqlite connection; this module does not change query results.
 import { SYNC_COLUMNS, syncRecordId } from './syncModel';
 
+export async function addAnalyticsSettingIfMissing(db) {
+  const columns = await db.getAllAsync('PRAGMA table_info(settings)');
+  if (!columns.some((column) => column.name === 'analytics')) {
+    await db.execAsync("ALTER TABLE settings ADD COLUMN analytics TEXT NOT NULL DEFAULT 'unknown' CHECK (analytics IN ('unknown', 'accepted', 'rejected'))");
+  }
+}
+
 export async function initializeSyncStorage(db, resetPersonalData = false) {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS sync_queue (id TEXT PRIMARY KEY NOT NULL, table_name TEXT NOT NULL,
@@ -71,7 +78,7 @@ export async function applySyncRecord(db, change) {
   } else {
     await db.runAsync(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})
       ON CONFLICT(${keys.join(',')}) DO UPDATE SET ${columns.filter((c) => !keys.includes(c)).map((c) => `${c}=excluded.${c}`).join(',')}`,
-      ...columns.map((column) => row[column] ?? null));
+      ...columns.map((column) => column === 'analytics' ? (row[column] ?? 'unknown') : (row[column] ?? null)));
   }
 }
 
@@ -129,7 +136,8 @@ export async function getSettings(db) {
         learning_language,
         level,
         new_words_per_day,
-        onboarding_completed
+        onboarding_completed,
+        analytics
       FROM settings
       WHERE id = 1
     `
@@ -155,8 +163,9 @@ export async function completeOnboarding(
         level,
         new_words_per_day,
         onboarding_completed,
+        analytics,
         last_modified_at
-      ) VALUES (1, ?, ?, ?, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      ) VALUES (1, ?, ?, ?, ?, 1, 'unknown', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       ON CONFLICT(id) DO UPDATE SET
         native_language = excluded.native_language,
         learning_language = excluded.learning_language,
@@ -174,7 +183,7 @@ export async function completeOnboarding(
 
 export async function updateSettings(
   db,
-  { nativeLanguage, learningLanguage, level, newWordsPerDay }
+  { nativeLanguage, learningLanguage, level, newWordsPerDay, analytics }
 ) {
   if (nativeLanguage != null) {
     await db.runAsync( 
@@ -199,6 +208,10 @@ export async function updateSettings(
       `UPDATE settings SET new_words_per_day = ? WHERE id = 1`,
       Number(newWordsPerDay)
     );
+  }
+
+  if (analytics != null) {
+    await db.runAsync('UPDATE settings SET analytics = ? WHERE id = 1', analytics);
   }
 }
 

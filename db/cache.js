@@ -41,6 +41,7 @@ function createCache() {
       level: row.level,
       new_words_per_day: row.new_words_per_day,
       onboarding_completed: row.onboarding_completed,
+      analytics: row.analytics ?? 'unknown',
     };
   }
 

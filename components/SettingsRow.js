@@ -21,12 +21,12 @@ export function SettingsChevron({ down = false, color = colors.primary }) {
 }
 
 export function SettingsToggle({ value = false, disabled = false }) {
-  return <View style={[styles.toggle, value && styles.toggleOn, disabled && styles.toggleDisabled, value && disabled && styles.toggleOnDisabled]}>
+  return <View accessible={false} importantForAccessibility="no-hide-descendants" style={[styles.toggle, value && styles.toggleOn, disabled && styles.toggleDisabled, value && disabled && styles.toggleOnDisabled]}>
     <View style={[styles.toggleThumb, value && styles.toggleThumbOn, disabled && styles.toggleThumbDisabled]} />
   </View>;
 }
 
-export default function SettingsRow({ label, value, onPress, down = false, trailing, danger = false, disabled = false }) {
+export default function SettingsRow({ label, value, onPress, down = false, trailing, danger = false, disabled = false, accessibilityRole = 'button', accessibilityState }) {
   const fontScale = useFontScale();
   const { showPressed, pressProps } = useDelayedPressed({ disabled });
   const content = (
@@ -58,9 +58,9 @@ export default function SettingsRow({ label, value, onPress, down = false, trail
       onPress={onPress}
       disabled={disabled}
       {...pressProps}
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
       accessibilityLabel={value == null ? label : `${label}, ${value}`}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, ...accessibilityState }}
       style={style}
     >
       {content}

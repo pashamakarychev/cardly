@@ -29,7 +29,7 @@ function ChoiceRow({ label, value, onOpen, down }) {
   </View>;
 }
 
-export default function SettingsScreen({ preferences, onPreferencesChange, onBack, userEmail, onChangePassword, onLogOut, onPrivacyPress }) {
+export default function SettingsScreen({ preferences, onPreferencesChange, onAnalyticsChange, onBack, userEmail, onChangePassword, onLogOut, onPrivacyPress }) {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
@@ -44,6 +44,8 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
   const [level, setLevel] = useState(preferences?.level ?? 'Beginner');
   const [wordsPerDay, setWordsPerDay] = useState(preferences?.wordsPerDay ?? '10');
+  const [analytics, setAnalytics] = useState(preferences?.analytics ?? 'unknown');
+  const analyticsSaving = useRef(false);
   const [picker, setPicker] = useState(null);
   const [languageDialog, setLanguageDialog] = useState(null);
   const [showLogOutDialog, setShowLogOutDialog] = useState(false);
@@ -54,10 +56,29 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
     setLearning(preferences.learning);
     setLevel(preferences.level);
     setWordsPerDay(preferences.wordsPerDay);
+    setAnalytics(preferences.analytics ?? 'unknown');
   }, [preferences]);
   useEffect(() => setPicker(null), [isTablet, isDesktop]);
 
-  const notify = (patch) => onPreferencesChange?.({ speaks, learning, level, wordsPerDay, ...patch });
+  const notify = (patch) => onPreferencesChange?.({ speaks, learning, level, wordsPerDay, analytics, ...patch });
+  const toggleAnalytics = async () => {
+    if (analyticsSaving.current) return;
+    analyticsSaving.current = true;
+    const next = analytics === 'accepted' ? 'rejected' : 'accepted';
+    setAnalytics(next);
+    notify({ analytics: next });
+    onAnalyticsChange?.(next);
+    try {
+      await updateSettings(db, { analytics: next });
+    } catch (error) {
+      setAnalytics(analytics);
+      notify({ analytics });
+      onAnalyticsChange?.(analytics);
+      console.error(error);
+    } finally {
+      analyticsSaving.current = false;
+    }
+  };
   const choices = {
     speaks: { label: 'I speak', options: SPEAK_LANGUAGES, selected: speaks, disabledOptions: [learning], onSelect: async (value) => {
       if (value === learning || value === speaks) return;
@@ -105,7 +126,9 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onBac
           <ChoiceRow label="New words per day" value={wordsPerDay} down={isTablet} onOpen={(anchor) => open('wordsPerDay', anchor)} />
         </View>
         <View style={styles.group}>
-          <SettingsRow label="Analytics" trailing={<SettingsToggle value />} />
+          <SettingsRow label="Analytics" trailing={<SettingsToggle value={analytics === 'accepted'} />}
+            onPress={toggleAnalytics} accessibilityRole="switch"
+            accessibilityState={{ checked: analytics === 'accepted' }} />
           <SettingsRow label="Privacy Policy" onPress={onPrivacyPress} />
         </View>
         <View style={styles.group}><SettingsRow label="Log out" danger onPress={() => setShowLogOutDialog(true)} /></View>
