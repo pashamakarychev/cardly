@@ -10,6 +10,7 @@ import TopGradient from '../components/TopGradient';
 import { XIcon } from '../components/icons/XIcon';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import { useScreenReaderEnabled } from '../hooks/useScreenReaderEnabled';
 import { colors, layout } from '../theme';
 import { announceForAccessibility } from '../utils/accessibility';
@@ -47,6 +48,7 @@ export default function SessionScreen({
 }) {
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
   const fontScale = useFontScale();
   const screenReaderEnabled = useScreenReaderEnabled();
   const [wrongOptions, setWrongOptions] = useState([]);
@@ -235,7 +237,7 @@ export default function SessionScreen({
           { top: topInset, height: headerHeight, paddingHorizontal },
         ]}
       >
-        <View style={styles.headerContent}>
+        <View style={[styles.headerContent, isDesktop && styles.headerContentDesktop]}>
           <IconButton
             icon={<XIcon />}
             onPress={onClose}
@@ -288,6 +290,9 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
     maxWidth: layout.sessionHeaderMaxWidth,
+  },
+  headerContentDesktop: {
+    maxWidth: layout.desktopSessionHeaderMaxWidth,
   },
   spacer: {
     flexGrow: 1,

@@ -7,6 +7,7 @@ export const layout = {
   maxContentWidth: 600,
   compactContentWidth: 375,
   sessionHeaderMaxWidth: 1024,
+  desktopSessionHeaderMaxWidth: 600,
   sessionContentMinHeight: 520,
   tabletSessionContentMinHeight: 523,
   screenPaddingX: 16,
