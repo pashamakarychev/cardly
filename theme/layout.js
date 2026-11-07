@@ -1,20 +1,18 @@
 // Layout tokens from the Cardly Figma responsive frames.
 // Compact study columns cap at 375px; preference columns at 600px.
-// Above tabletBreakpoint, screens use
-// the tablet frames (40px padding, vertically centered content).
+// Phone and tablet use safe-area insets for vertical edge spacing.
 
 export const layout = {
   maxContentWidth: 600,
   compactContentWidth: 375,
-  sessionHeaderMaxWidth: 1024,
-  desktopSessionHeaderMaxWidth: 600,
-  sessionContentMinHeight: 520,
-  tabletSessionContentMinHeight: 523,
+  cardStackAspectRatio: 370 / 220,
+  sessionProgressMaxWidth: 376,
+  sessionContentMinHeight: 547,
+  authContentWidth: 371,
+  desktopScreenPaddingX: 24,
+  desktopScreenPaddingY: 20,
+  safeAreaContentGap: 16,
   screenPaddingX: 16,
-  // Bottom inset used when a screen pins a primary control above the home
-  // indicator (Continue / Home / session actions).
-  screenPaddingBottom: 50,
-  contentTopPadding: 19,
 
   // Figma Onboarding/Settings: space from last content to Continue / nav.
   // Onboarding container pb 124 = 64 + 60px button; Settings pb 128 = 64 + 64px nav.
@@ -25,12 +23,5 @@ export const layout = {
   // Wider than this uses the tablet compositions.
   tabletBreakpoint: 768,
   desktopBreakpoint: 1200,
-  sidebarWidth: 240,
-  sidebarCollapsedWidth: 68,
-  desktopAuthPaddingTop: 78,
-  tabletScreenPadding: 40,
-  tabletContentPaddingTop: 48,
-  tabletContentPaddingBottom: 64,
-  // Session (Exercise / New Word) tablet body under the fixed header.
-  tabletSessionPaddingTop: 24,
+  tabletScreenPaddingX: 40,
 };

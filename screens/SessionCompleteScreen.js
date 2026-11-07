@@ -1,5 +1,11 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useScreenEdgePadding } from '../hooks/useScreenEdgePadding';
+import { useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
@@ -8,7 +14,6 @@ import MetricCard from '../components/MetricCard';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
-import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 const HOME_BUTTON_HEIGHT = 60;
@@ -18,22 +23,24 @@ export default function SessionCompleteScreen({
   wordsReviewed = 0,
   onHome,
 }) {
-  const insets = useSafeAreaInsets();
+  const { isDesktop, top: paddingTop, bottom: homeBottom } = useScreenEdgePadding();
   const isTablet = useIsTablet();
-  const isDesktop = useIsDesktop();
   const fontScale = useFontScale();
+  const { height } = useWindowDimensions();
+  const [contentHeight, setContentHeight] = useState(259);
   const homeButtonHeight = HOME_BUTTON_HEIGHT * fontScale;
 
   // Fill under Home must cover the full bottom safe zone.
-  const homeBottom = isTablet
-    ? Math.max(insets.bottom, layout.tabletScreenPadding)
-    : Math.max(insets.bottom, layout.screenPaddingBottom);
-  const paddingHorizontal = isTablet
-    ? layout.tabletScreenPadding
-    : layout.screenPaddingX;
-  const paddingTop = isTablet
-    ? Math.max(insets.top, homeButtonHeight + homeBottom)
-    : insets.top + layout.contentTopPadding;
+  const paddingHorizontal = isDesktop
+    ? layout.desktopScreenPaddingX
+    : isTablet
+      ? layout.tabletScreenPaddingX
+      : layout.screenPaddingX;
+  const baseBottom = homeBottom;
+  const clearance = homeButtonHeight + homeBottom + 24;
+  const centeredBottom = (height + paddingTop - baseBottom + contentHeight) / 2;
+  const paddingBottom =
+    centeredBottom > height - clearance ? clearance : baseBottom;
 
   return (
     <View style={styles.screen}>
@@ -47,13 +54,18 @@ export default function SessionCompleteScreen({
             paddingTop,
             paddingHorizontal,
             // Clears the absolutely positioned Home button.
-            paddingBottom: homeButtonHeight + homeBottom,
+            paddingBottom,
           },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
+        <View
+          style={styles.content}
+          onLayout={(event) =>
+            setContentHeight(event.nativeEvent.layout.height)
+          }
+        >
           <View
             style={styles.iconContainer}
             accessible={false}
@@ -61,16 +73,21 @@ export default function SessionCompleteScreen({
           >
             <CheckIcon size={48} color={colors.primary} />
           </View>
-          <AccessibleText style={styles.title} accessibilityRole="header">
-            Session complete!
-          </AccessibleText>
-          <View style={styles.metrics}>
-            <MetricCard value={String(newWords)} label="New Words" />
-            <MetricCard value={String(wordsReviewed)} label="Words Reviewed" />
+          <View style={styles.summary}>
+            <AccessibleText style={styles.title} accessibilityRole="header">
+              Session complete!
+            </AccessibleText>
+            <View style={styles.metrics}>
+              <MetricCard value={String(newWords)} label="New Words" />
+              <MetricCard
+                value={String(wordsReviewed)}
+                label="Words Reviewed"
+              />
+            </View>
           </View>
         </View>
       </ScrollView>
-      <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : homeBottom} />
+      <BottomGradient bottom={homeBottom} />
       <View style={[styles.footer, { bottom: homeBottom, paddingHorizontal }]}>
         <Button title="Home" onPress={onHome} style={styles.footerButton} />
       </View>
@@ -93,10 +110,11 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    gap: 10,
+    gap: 32,
     maxWidth: layout.compactContentWidth,
     width: '100%',
   },
+  summary: { gap: 12, alignItems: 'center', width: '100%' },
   footer: {
     alignItems: 'center',
     left: 0,
@@ -116,6 +134,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h1,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
   metrics: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
+import { useScreenEdgePadding } from '../hooks/useScreenEdgePadding';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AccessibleText from '../components/AccessibleText';
 import IconButton from '../components/IconButton';
@@ -46,12 +46,12 @@ const sections = [
 ];
 
 export default function PrivacyScreen({ onBack }) {
-  const insets = useSafeAreaInsets();
+  const { top: paddingTop, bottom: paddingBottom } = useScreenEdgePadding();
 
   return <View style={[styles.screen, Platform.OS === 'web' && StyleSheet.absoluteFill]}>
     <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, {
-      paddingTop: Math.max(insets.top, 24) + 24,
-      paddingBottom: Math.max(insets.bottom, 32) + 32,
+      paddingTop,
+      paddingBottom,
     }]}>
       <View style={styles.header}>
         <IconButton icon={<ChevronLeftIcon />} onPress={onBack} accessibilityLabel="Back" />

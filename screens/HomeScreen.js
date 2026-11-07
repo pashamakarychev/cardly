@@ -1,20 +1,19 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BottomGradient from '../components/BottomGradient';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
 import AccessibleText from '../components/AccessibleText';
 import Button from '../components/Button';
 import Dialog from '../components/Dialog';
-import MetricRow from '../components/MetricRow';
-import { useFontScale } from '../hooks/useFontScale';
-import { useIsTablet } from '../hooks/useIsTablet';
-import { useIsDesktop } from '../hooks/useIsDesktop';
+import CardStack from '../components/CardStack';
+import IconButton from '../components/IconButton';
+import { SettingsIcon } from '../components/icons/SettingsIcon';
+import { useStudyScreenLayout } from '../hooks/useStudyScreenLayout';
 import { useWordsAvailabilityLabel } from '../hooks/useWordsAvailabilityLabel';
 import { colors, layout, typography } from '../theme';
 
-// Figma phone Home Content → Spacer.
-const PHONE_SPACER_HEIGHT = 137;
+// The desktop gradient has its own height in Figma and doesn't position content.
+const DESKTOP_GRADIENT_FILL_HEIGHT = 50;
 
 function levelCompletedCopy(levelCompleted, currentLevel) {
   if (levelCompleted == null) {
@@ -48,11 +47,11 @@ export default function HomeScreen({
   levelCompleted,
   onLevelCompletedConfirm,
   onStart,
+  onSettings,
 }) {
-  const insets = useSafeAreaInsets();
-  const isTablet = useIsTablet();
-  const isDesktop = useIsDesktop();
-  const fontScale = useFontScale();
+  const {
+    isDesktop, isTablet, top, bottom: navBottom, fontScale, paddingHorizontal, cardTop,
+  } = useStudyScreenLayout();
   const dialog = levelCompletedCopy(levelCompleted, currentLevel);
   const availabilityLabel = useWordsAvailabilityLabel({
     canStart,
@@ -61,19 +60,7 @@ export default function HomeScreen({
   });
   const navHeight = NAV_HEIGHT * fontScale;
 
-  // Nav sits 50px from the bottom on tablet (Figma) and insets+16 on phone;
-  // keep content clear of the scaled nav bar. Fill under the nav covers the safe zone.
-  const navBottom = isTablet
-    ? Math.max(insets.bottom, layout.screenPaddingBottom)
-    : insets.bottom + 16;
-
-  const paddingTop = isTablet
-    ? Math.max(insets.top, isDesktop ? layout.tabletScreenPadding : navBottom + navHeight)
-    : insets.top + layout.contentTopPadding;
-  const paddingBottom = isDesktop ? Math.max(insets.bottom, layout.tabletScreenPadding) : navBottom + navHeight;
-  const paddingHorizontal = isTablet
-    ? layout.tabletScreenPadding
-    : layout.screenPaddingX;
+  const paddingBottom = isDesktop ? navBottom : navBottom + navHeight + 24;
 
   return (
     <View style={styles.screen}>
@@ -83,9 +70,8 @@ export default function HomeScreen({
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          isTablet && styles.scrollContentTablet,
           {
-            paddingTop,
+            paddingTop: cardTop,
             paddingBottom,
             paddingHorizontal,
           },
@@ -93,21 +79,30 @@ export default function HomeScreen({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.content, !isTablet && styles.contentPhone]}>
-          {!isTablet && <View style={styles.spacer} />}
-          <AccessibleText style={styles.title} accessibilityRole="header">
-            Study Session
-          </AccessibleText>
-          <View style={styles.metricsContainer}>
-            <MetricRow label="New Words" value={String(newWords)} />
-            <MetricRow label="Words to Review" value={String(wordsToReview)} />
-          </View>
-          <View style={styles.startGroup}>
-            {availabilityLabel != null ? (
-              <AccessibleText style={styles.availabilityLabel}>
-                {availabilityLabel}
+        <View style={styles.contentFrame}>
+          <View style={[styles.content, !isTablet && styles.contentPhone]}>
+            <CardStack word="Hola" nextWord="Adiós" />
+            <View style={styles.studySession}>
+              <AccessibleText style={styles.title} accessibilityRole="header">
+                Study Session
               </AccessibleText>
-            ) : null}
+              <View style={styles.availability}>
+                {availabilityLabel != null ? (
+                  <AccessibleText style={styles.availabilityLabel}>
+                    {availabilityLabel}
+                  </AccessibleText>
+                ) : (
+                  <>
+                    <AccessibleText
+                      style={styles.availabilityLabel}
+                    >{`${newWords} New words`}</AccessibleText>
+                    <AccessibleText
+                      style={styles.availabilityLabel}
+                    >{`${wordsToReview} Words to review`}</AccessibleText>
+                  </>
+                )}
+              </View>
+            </View>
             <Button
               title={canContinue ? 'Continue' : 'Start'}
               onPress={onStart}
@@ -116,7 +111,22 @@ export default function HomeScreen({
           </View>
         </View>
       </ScrollView>
-      <BottomGradient bottom={navBottom} />
+      <BottomGradient
+        bottom={isDesktop ? DESKTOP_GRADIENT_FILL_HEIGHT : navBottom}
+        height={isDesktop ? undefined : navHeight}
+      />
+      {isDesktop && (
+        <View style={[styles.settingsButton, { top }]}>
+          <IconButton
+            icon={<SettingsIcon size={24} />}
+            variant="ghost"
+            size="large"
+            shadow={false}
+            accessibilityLabel="Settings"
+            onPress={onSettings}
+          />
+        </View>
+      )}
       <Dialog
         visible={dialog != null}
         title={dialog?.title ?? ''}
@@ -128,55 +138,25 @@ export default function HomeScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.surface,
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  screen: { backgroundColor: colors.surface, flex: 1 },
+  scroll: { flex: 1 },
   scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
   },
-  scrollContentTablet: {
-    justifyContent: 'center',
-  },
-  content: {
-    alignItems: 'center',
-    gap: 24,
+  contentFrame: {
     maxWidth: layout.compactContentWidth,
     width: '100%',
   },
-  // Fills the scroll viewport so the spacer can grow/shrink before scrolling.
-  contentPhone: {
-    flexGrow: 1,
-  },
-  spacer: {
-    // Prefer Figma’s 137px; shrink first when the column can’t fit.
-    flexGrow: 1,
-    flexShrink: 1,
-    maxHeight: PHONE_SPACER_HEIGHT,
-    minHeight: 0,
-    width: '100%',
-  },
-  title: {
-    ...typography.h1,
-    color: colors.textPrimary,
-  },
-  metricsContainer: {
-    backgroundColor: colors.background,
-    borderRadius: 32,
-    width: '100%',
-  },
-  startGroup: {
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-  },
+  content: { alignItems: 'center', gap: 24, width: '100%' },
+  contentPhone: { gap: 32 },
+  studySession: { alignItems: 'center', gap: 16, width: '100%' },
+  title: { ...typography.h1, color: colors.textPrimary, textAlign: 'center' },
+  availability: { alignItems: 'center', gap: 12, width: '100%' },
   availabilityLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
+  settingsButton: { position: 'absolute', right: layout.desktopScreenPaddingX },
 });

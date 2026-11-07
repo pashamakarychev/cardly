@@ -1,10 +1,16 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { CheckIcon } from './icons/CheckIcon';
 import { XIcon } from './icons/XIcon';
 import { useDelayedPressed } from './useDelayedPressed';
 import { useFontScale } from '../hooks/useFontScale';
-import { colors, typography } from '../theme';
+import { colors, palette, typography } from '../theme';
 
 const BUTTON_HEIGHTS = {
   large: 60,
@@ -29,69 +35,93 @@ export default function Button({
   size = 'large',
   status,
   disabled = false,
+  loading = false,
   style,
 }) {
   const fontScale = useFontScale();
   const secondary = variant === 'secondary';
+  const tertiary = variant === 'tertiary';
   const showFeedback = status === 'correct' || status === 'incorrect';
   const iconColor =
     status === 'correct' ? colors.successStrong : colors.errorStrong;
   const { showPressed, pressProps } = useDelayedPressed({
-    disabled: disabled || showFeedback,
+    disabled: disabled || loading || showFeedback,
   });
   const feedback = feedbackLabel(status);
   const accessibilityLabel = feedback ? `${title}, ${feedback}` : title;
 
   return (
     <Pressable
-      disabled={disabled || showFeedback}
+      disabled={disabled || loading || showFeedback}
       onPress={onPress}
       {...pressProps}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{
-        disabled: disabled || showFeedback,
+        disabled: disabled || loading || showFeedback,
+        busy: loading,
       }}
       style={[
         styles.button,
         { height: (BUTTON_HEIGHTS[size] ?? BUTTON_HEIGHTS.large) * fontScale },
         secondary && styles.buttonSecondary,
-        disabled && (secondary ? styles.secondaryDisabled : styles.primaryDisabled),
+        tertiary && styles.buttonTertiary,
+        disabled &&
+          (tertiary
+            ? styles.tertiaryDisabled
+            : secondary
+              ? styles.secondaryDisabled
+              : styles.primaryDisabled),
         !disabled &&
           showPressed &&
-          (secondary ? styles.secondaryPressed : styles.primaryPressed),
+          (tertiary
+            ? styles.tertiaryPressed
+            : secondary
+              ? styles.secondaryPressed
+              : styles.primaryPressed),
         showFeedback && status === 'correct' && styles.correct,
         showFeedback && status === 'incorrect' && styles.incorrect,
         style,
       ]}
     >
-      <View
-        style={styles.content}
-        importantForAccessibility="no-hide-descendants"
-      >
-        {showFeedback ? (
-          status === 'correct' ? (
-            <CheckIcon size={24} color={iconColor} />
-          ) : (
-            <XIcon size={24} color={iconColor} />
-          )
-        ) : null}
-        <Text
-          style={[
-            styles.title,
-            secondary && styles.titleSecondary,
-            disabled && secondary && styles.titleSecondaryDisabled,
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
-          accessible={false}
-          importantForAccessibility="no"
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={
+            secondary || tertiary ? colors.textPrimary : colors.textInverse
+          }
+        />
+      ) : (
+        <View
+          style={styles.content}
+          importantForAccessibility="no-hide-descendants"
         >
-          {title}
-        </Text>
-        {showFeedback ? <View style={styles.iconSpacer} /> : null}
-      </View>
+          {showFeedback ? (
+            status === 'correct' ? (
+              <CheckIcon size={24} color={iconColor} />
+            ) : (
+              <XIcon size={24} color={iconColor} />
+            )
+          ) : null}
+          <Text
+            style={[
+              styles.title,
+              (secondary || tertiary) && styles.titleSecondary,
+              disabled &&
+                (secondary || tertiary) &&
+                styles.titleSecondaryDisabled,
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            {title}
+          </Text>
+          {showFeedback ? <View style={styles.iconSpacer} /> : null}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -107,6 +137,9 @@ const styles = StyleSheet.create({
   buttonSecondary: {
     backgroundColor: colors.background,
   },
+  buttonTertiary: { backgroundColor: colors.surface },
+  tertiaryPressed: { backgroundColor: colors.surfaceSubtle },
+  tertiaryDisabled: { backgroundColor: palette.gray300 },
   primaryDisabled: {
     backgroundColor: colors.primaryDisabled,
   },

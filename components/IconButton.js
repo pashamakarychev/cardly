@@ -1,11 +1,16 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useDelayedPressed } from './useDelayedPressed';
+import { colors } from '../theme';
 
 export default function IconButton({
   icon,
   onPress,
   accessibilityLabel,
+  variant = 'secondary',
+  size = 'large',
+  shadow = true,
+  style,
 }) {
   const { showPressed, pressProps } = useDelayedPressed();
 
@@ -15,7 +20,13 @@ export default function IconButton({
       {...pressProps}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={[styles.button, showPressed && styles.pressed]}
+      style={[
+        styles.button,
+        size === 'medium' && styles.medium,
+        variant === 'ghost' ? styles.ghost : shadow && styles.shadow,
+        style,
+        showPressed && styles.pressed,
+      ]}
     >
       <View accessible={false} importantForAccessibility="no-hide-descendants">
         {icon}
@@ -27,18 +38,22 @@ export default function IconButton({
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     borderRadius: 26,
-    elevation: 2,
     height: 48,
     justifyContent: 'center',
-    shadowColor: '#000000',
+    width: 48,
+  },
+  medium: { height: 36, width: 36 },
+  ghost: { backgroundColor: 'transparent' },
+  shadow: {
+    elevation: 2,
+    shadowColor: colors.textPrimary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.05,
     shadowRadius: 20,
-    width: 48,
   },
   pressed: {
-    transform: [{ scale: 0.97 }],
+    backgroundColor: colors.surface,
   },
 });

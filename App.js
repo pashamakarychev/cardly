@@ -1,3 +1,4 @@
+import { useScreenEdgePadding } from './hooks/useScreenEdgePadding';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -15,7 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import BottomNavigation, { TAB_KEYS } from './components/BottomNavigation';
 import AnalyticsConsentDialog from './components/AnalyticsConsentDialog';
@@ -65,8 +66,6 @@ import {
   slideTransitionSpec,
 } from './navigation/transitions';
 import { useHomeStatsSchedule } from './hooks/useHomeStatsSchedule';
-import { useIsTablet } from './hooks/useIsTablet';
-import { useIsDesktop } from './hooks/useIsDesktop';
 import { PasswordRecoveryContext, usePasswordRecovery } from './hooks/usePasswordRecovery';
 
 import {
@@ -86,7 +85,7 @@ import ResetPasswordScreen from './screens/ResetPasswordScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import SessionCompleteScreen from './screens/SessionCompleteScreen';
 import SessionScreen, { SESSION_MODES } from './screens/SessionScreen';
-import { colors, layout } from './theme';
+import { colors } from './theme';
 import {
   announceForAccessibility,
   routeAnnouncement,
@@ -111,9 +110,7 @@ function AppContent({ userId, userEmail }) {
   const db = useSQLiteContext();
   useEffect(() => startSync(db, userId, () =>
     !navigationRef.isReady() || navigationRef.getCurrentRoute()?.name !== 'Session'), [db, userId]);
-  const insets = useSafeAreaInsets();
-  const isTablet = useIsTablet();
-  const isDesktop = useIsDesktop();
+  const { isDesktop, bottom: navBottom } = useScreenEdgePadding();
   const [initialRoute, setInitialRoute] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
   const [slideFrom, setSlideFrom] = useState('right');
@@ -822,14 +819,7 @@ function AppContent({ userId, userEmail }) {
           <View
             style={[
               styles.navContainer,
-              {
-                // Tablet: Home is 50px from the edge; Settings is 40px.
-                bottom: isTablet
-                  ? Math.max(insets.bottom, activeTab === 'settings'
-                    ? layout.tabletScreenPadding
-                    : layout.screenPaddingBottom)
-                  : insets.bottom + 16,
-              },
+              { bottom: navBottom },
             ]}
           >
             <BottomNavigation activeTab={activeTab} onTabPress={handleTabPress} />

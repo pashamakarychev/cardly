@@ -37,7 +37,7 @@ export default function SettingsRow({ label, value, onPress, down = false, trail
       >
         {label}
       </AccessibleText>
-      {trailing ?? (value != null || onPress ? (
+      {trailing ?? (!danger && (value != null || onPress) ? (
         <View style={styles.valueWrap} accessible={false} importantForAccessibility="no-hide-descendants">
           {value != null && (
             <AccessibleText
@@ -52,7 +52,7 @@ export default function SettingsRow({ label, value, onPress, down = false, trail
       ) : null)}
     </>
   );
-  const style = [styles.row, { minHeight: 64 * fontScale }, showPressed && styles.pressed, disabled && styles.disabled];
+  const style = [styles.row, { minHeight: 64 * fontScale }, showPressed && accessibilityRole !== 'switch' && styles.pressed];
   return onPress ? (
     <Pressable
       onPress={onPress}
@@ -77,7 +77,6 @@ const styles = StyleSheet.create({
   value: { ...typography.caption, color: colors.primary },
   webValue: { lineHeight: 18 },
   pressed: { backgroundColor: colors.surface },
-  disabled: { backgroundColor: palette.gray300 },
   disabledText: { color: colors.textSecondary },
   toggle: { width: 52, height: 32, borderRadius: 16, backgroundColor: colors.surface, padding: 4, justifyContent: 'center' },
   toggleOn: { backgroundColor: colors.primary },

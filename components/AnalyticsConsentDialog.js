@@ -17,8 +17,10 @@ export default function AnalyticsConsentDialog({ visible, onAccept, onDecline, o
             <AccessibleText style={[styles.description, styles.privacyLink]}>Privacy policy</AccessibleText>
           </Pressable>
         </View>
-        <Button title="Accept" onPress={onAccept} size="medium" style={{ height: 52 * fontScale }} />
-        <Button title="Decline" onPress={onDecline} variant="secondary" size="medium" style={{ height: 52 * fontScale }} />
+        <View style={styles.buttons}>
+          <Button title="Accept" onPress={onAccept} size="medium" style={{ height: 52 * fontScale }} />
+          <Button title="Decline" onPress={onDecline} variant="tertiary" size="medium" style={{ height: 52 * fontScale }} />
+        </View>
       </View>
     </View>
   </Modal>;
@@ -26,7 +28,8 @@ export default function AnalyticsConsentDialog({ visible, onAccept, onDecline, o
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  card: { backgroundColor: colors.background, borderRadius: 32, gap: 12, maxWidth: 320, padding: 16, width: '100%' },
+  card: { backgroundColor: colors.background, borderRadius: 32, gap: 8, maxWidth: 320, padding: 16, width: '100%' },
+  buttons: { gap: 12, width: '100%' },
   message: { gap: 16, padding: 16 },
   title: { ...typography.h3, color: colors.textPrimary },
   description: { ...typography.caption, color: colors.textSecondary },

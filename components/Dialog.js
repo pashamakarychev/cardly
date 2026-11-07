@@ -40,19 +40,21 @@ export default function Dialog({
               {description}
             </AccessibleText>
           </View>
-          <Button
-            title={confirmLabel}
-            onPress={onConfirm}
-            style={[styles.button, { height: 52 * fontScale }]}
-          />
-          {onCancel && (
+          <View style={styles.buttons}>
             <Button
-              title={cancelLabel ?? 'Cancel'}
-              variant="secondary"
-              onPress={onCancel}
+              title={confirmLabel}
+              onPress={onConfirm}
               style={[styles.button, { height: 52 * fontScale }]}
             />
-          )}
+            {onCancel && (
+              <Button
+                title={cancelLabel ?? 'Cancel'}
+                variant="tertiary"
+                onPress={onCancel}
+                style={[styles.button, { height: 52 * fontScale }]}
+              />
+            )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -91,5 +93,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     width: '100%',
   },
+  buttons: { gap: 12, width: '100%' },
   button: {},
 });

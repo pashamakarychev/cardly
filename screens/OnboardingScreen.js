@@ -1,7 +1,7 @@
+import { useScreenEdgePadding } from '../hooks/useScreenEdgePadding';
 import { useSQLiteContext } from '../db/SQLiteProvider';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
@@ -12,7 +12,6 @@ import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../cons
 import { completeOnboarding } from '../db/repository';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
-import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 // Continue button geometry (matches Button + footer placement).
@@ -22,9 +21,8 @@ const HEADER_CONTENT_GAP = 24;
 
 export default function OnboardingScreen({ onContinue }) {
   const db = useSQLiteContext();
-  const insets = useSafeAreaInsets();
+  const { isDesktop, top: topInset, bottom: continueBottom } = useScreenEdgePadding();
   const isTablet = useIsTablet();
-  const isDesktop = useIsDesktop();
   const { height: windowHeight } = useWindowDimensions();
   const [contentHeight, setContentHeight] = useState(0);
   const fontScale = useFontScale();
@@ -76,23 +74,19 @@ export default function OnboardingScreen({ onContinue }) {
   };
 
   // Content inset below the status bar (header sits here on phone).
-  const topInset = isTablet
-    ? Math.max(insets.top, layout.tabletScreenPadding)
-    : insets.top + layout.contentTopPadding;
   // Fill under Continue must cover the full bottom safe zone.
-  const continueBottom = isTablet
-    ? Math.max(insets.bottom, layout.tabletScreenPadding)
-    : Math.max(insets.bottom, layout.screenPaddingBottom);
-  const paddingHorizontal = isTablet
-    ? layout.tabletScreenPadding
-    : layout.screenPaddingX;
+  const paddingHorizontal = isDesktop ? layout.desktopScreenPaddingX
+    : isTablet ? layout.tabletScreenPaddingX : layout.screenPaddingX;
 
   // Phone: clears the fixed title. Tablet: title lives in the centered column.
   const scrollPaddingTop = isTablet
     ? topInset
     : topInset + headerHeight + HEADER_CONTENT_GAP;
-  const canCenterDesktopContent = isDesktop && contentHeight > 0 &&
-    windowHeight >= contentHeight + 2 * (continueHeight + continueBottom + layout.contentToOverlayGap);
+  const baseBottom = continueBottom;
+  const footerClearance = continueHeight + continueBottom + layout.contentToOverlayGap;
+  const centeredBottom = (windowHeight + topInset - baseBottom + contentHeight) / 2;
+  const canCenterContent = isTablet && contentHeight > 0 &&
+    centeredBottom <= windowHeight - footerClearance;
 
   return (
     <View style={styles.screen}>
@@ -102,13 +96,12 @@ export default function OnboardingScreen({ onContinue }) {
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          isDesktop && styles.scrollContentDesktop,
+          isTablet && styles.scrollContentCentered,
           {
             paddingTop: scrollPaddingTop,
             paddingHorizontal,
             // Clears the pinned Continue button with Figma’s 64px gap.
-            paddingBottom: canCenterDesktopContent ? topInset
-              : continueHeight + continueBottom + layout.contentToOverlayGap,
+            paddingBottom: canCenterContent ? baseBottom : footerClearance,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -116,8 +109,6 @@ export default function OnboardingScreen({ onContinue }) {
         <View
           style={[
             styles.container,
-            isTablet ? styles.containerTablet : null,
-            isDesktop && styles.containerDesktop,
           ]}
           onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
         >
@@ -160,7 +151,7 @@ export default function OnboardingScreen({ onContinue }) {
       {/* Phone only — tablet Onboarding has no top gradient in Figma. */}
       {!isTablet && (
         <>
-          <TopGradient fillHeight={insets.top} />
+          <TopGradient fillHeight={topInset} />
           <View
             pointerEvents="box-none"
             style={[
@@ -175,7 +166,7 @@ export default function OnboardingScreen({ onContinue }) {
         </>
       )}
 
-      <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : continueBottom} />
+      <BottomGradient bottom={continueBottom} />
       <View style={[styles.footer, { bottom: continueBottom, paddingHorizontal }]}>
         <Button
           title="Continue"
@@ -205,13 +196,7 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxContentWidth,
     width: '100%',
   },
-  // Tablet: title + chips vertically centered; Continue stays pinned below.
-  containerTablet: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  scrollContentDesktop: { justifyContent: 'center' },
-  containerDesktop: { flexGrow: 0 },
+  scrollContentCentered: { justifyContent: 'center' },
   header: {
     justifyContent: 'center',
     left: 0,

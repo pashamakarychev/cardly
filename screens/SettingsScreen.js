@@ -1,7 +1,7 @@
+import { useScreenEdgePadding } from '../hooks/useScreenEdgePadding';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSQLiteContext } from '../db/SQLiteProvider';
 import AccessibleText from '../components/AccessibleText';
 import BottomGradient from '../components/BottomGradient';
@@ -9,14 +9,13 @@ import { NAV_HEIGHT } from '../components/BottomNavigation';
 import Dialog from '../components/Dialog';
 import IconButton from '../components/IconButton';
 import SettingsPicker from '../components/SettingsPicker';
-import SettingsRow, { SettingsChevron, SettingsToggle } from '../components/SettingsRow';
+import SettingsRow, { SettingsToggle } from '../components/SettingsRow';
 import TopGradient from '../components/TopGradient';
 import { ChevronLeftIcon } from '../components/icons/ChevronLeftIcon';
 import { LEARN_LANGUAGES, LEVELS, SPEAK_LANGUAGES, WORDS_PER_DAY } from '../constants/preferences';
 import { updateSettings } from '../db/repository';
 import { useFontScale } from '../hooks/useFontScale';
 import { useIsTablet } from '../hooks/useIsTablet';
-import { useIsDesktop } from '../hooks/useIsDesktop';
 import { colors, layout, typography } from '../theme';
 
 const HEADER_HEIGHT = 48;
@@ -31,15 +30,20 @@ function ChoiceRow({ label, value, onOpen, down }) {
 
 export default function SettingsScreen({ preferences, onPreferencesChange, onAnalyticsChange, onBack, userEmail, onChangePassword, onLogOut, onPrivacyPress }) {
   const db = useSQLiteContext();
-  const insets = useSafeAreaInsets();
+  const { isDesktop, top: topInset, bottom: navBottom } = useScreenEdgePadding();
   const isTablet = useIsTablet();
-  const isDesktop = useIsDesktop();
   const fontScale = useFontScale();
+  const { height } = useWindowDimensions();
+  const [contentHeight, setContentHeight] = useState(733);
   const headerHeight = HEADER_HEIGHT * fontScale;
   const navHeight = NAV_HEIGHT * fontScale;
-  const topInset = isTablet ? Math.max(insets.top, layout.tabletScreenPadding) : insets.top + layout.contentTopPadding;
-  const navBottom = isTablet ? Math.max(insets.bottom, layout.tabletScreenPadding) : insets.bottom + 16;
-  const paddingHorizontal = isTablet ? layout.tabletScreenPadding : layout.screenPaddingX;
+  const paddingHorizontal = isDesktop ? layout.desktopScreenPaddingX : isTablet ? layout.tabletScreenPaddingX : layout.screenPaddingX;
+  const bottomClearance = navBottom + navHeight + layout.contentToOverlayGap;
+  const baseBottom = navBottom;
+  const centeredBottom = (height + topInset - baseBottom + contentHeight) / 2;
+  const centered = isDesktop
+    ? height >= contentHeight + topInset + baseBottom
+    : isTablet && centeredBottom <= height - navBottom - navHeight;
   const [speaks, setSpeaks] = useState(preferences?.speaks ?? 'English');
   const [learning, setLearning] = useState(preferences?.learning ?? 'Spanish');
   const [level, setLevel] = useState(preferences?.level ?? 'Beginner');
@@ -106,9 +110,9 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onAna
     <ScrollView style={[styles.scroll, Platform.OS === 'web' && styles.webScroll]} contentContainerStyle={[
       styles.scrollContent, isTablet && styles.scrollContentTablet,
       { paddingTop: isTablet ? topInset : topInset + headerHeight + 24, paddingHorizontal,
-        paddingBottom: isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) + navHeight + layout.contentToOverlayGap : navBottom + navHeight + layout.contentToOverlayGap },
+        paddingBottom: centered ? baseBottom : bottomClearance },
     ]} showsVerticalScrollIndicator={false}>
-      <View style={styles.container}>
+      <View style={styles.container} onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}>
         {isTablet && <AccessibleText style={styles.tabletTitle} accessibilityRole="header">Settings</AccessibleText>}
         <View style={styles.group}>
           <View style={styles.accountRow}>
@@ -134,13 +138,13 @@ export default function SettingsScreen({ preferences, onPreferencesChange, onAna
         <View style={styles.group}><SettingsRow label="Log out" danger onPress={() => setShowLogOutDialog(true)} /></View>
       </View>
     </ScrollView>
-    {!isTablet && <TopGradient fillHeight={insets.top} />}
-    {!isDesktop && <View pointerEvents="box-none" style={[styles.header, { top: topInset, height: headerHeight, paddingHorizontal }]}>
+    {!isTablet && <TopGradient fillHeight={topInset} />}
+    <View pointerEvents="box-none" style={[styles.header, { top: topInset, height: headerHeight, paddingHorizontal }]}>
       <IconButton icon={<ChevronLeftIcon />} onPress={onBack} accessibilityLabel="Back" />
       {!isTablet && <AccessibleText style={styles.title} accessibilityRole="header">Settings</AccessibleText>}
       {!isTablet && <View style={{ width: headerHeight }} />}
-    </View>}
-    <BottomGradient bottom={isDesktop ? Math.max(insets.bottom, layout.screenPaddingBottom) : navBottom} height={navHeight} />
+    </View>
+    <BottomGradient bottom={navBottom} height={navHeight} />
     <SettingsPicker visible={!!choice} options={choice?.options ?? []} selected={choice?.selected}
       disabledOptions={choice?.disabledOptions} onSelect={choice?.onSelect} onClose={() => setPicker(null)}
       mobile={!isTablet} anchor={picker?.anchor} />
@@ -163,9 +167,9 @@ const styles = StyleSheet.create({
   scrollContentTablet: { justifyContent: 'center' },
   container: { gap: 24, maxWidth: layout.maxContentWidth, width: '100%' },
   group: { backgroundColor: colors.background, borderRadius: 32, overflow: 'hidden', width: '100%' },
-  accountRow: { justifyContent: 'center', minHeight: 80, paddingHorizontal: 24, paddingVertical: 12, gap: 4 },
+  accountRow: { justifyContent: 'center', minHeight: 72, paddingHorizontal: 24, paddingVertical: 16, gap: 4 },
   accountTitle: { ...typography.h3, color: colors.textPrimary },
-  accountEmail: { ...typography.caption, lineHeight: 20, color: colors.textSecondary },
+  accountEmail: { ...typography.caption, color: colors.textSecondary },
   tabletTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center', width: '100%' },
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', left: 0, position: 'absolute', right: 0, zIndex: 1 },
   title: { ...typography.h2, color: colors.textPrimary },

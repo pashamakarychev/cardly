@@ -1,14 +1,13 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { colors, typography } from '../theme';
+import { colors, layout, typography } from '../theme';
 import { setAccessibilityFocusOn } from '../utils/accessibility';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
 // Geometry in Figma design space (370 x 220)
 const DESIGN_W = 370;
 const DESIGN_H = 220;
-const STACK_ASPECT_RATIO = DESIGN_W / DESIGN_H;
 
 const FRONT = { top: 12, w: 370, h: 208 };
 const BACK = { top: 0, left: 17, w: 333, h: 187.2 };
@@ -170,6 +169,8 @@ function CardStack(
         ]}
       >
         <Animated.View
+          aria-hidden
+          accessibilityElementsHidden
           accessible={false}
           importantForAccessibility="no-hide-descendants"
           style={[
@@ -234,7 +235,7 @@ function CardStack(
 const styles = StyleSheet.create({
   stack: {
     width: '100%',
-    aspectRatio: STACK_ASPECT_RATIO,
+    aspectRatio: layout.cardStackAspectRatio,
   },
   cardSlot: {
     position: 'absolute',

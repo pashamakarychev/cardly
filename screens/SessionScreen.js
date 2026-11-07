@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../components/Button';
 import CardStack from '../components/CardStack';
@@ -8,19 +7,11 @@ import IconButton from '../components/IconButton';
 import ProgressBar from '../components/ProgressBar';
 import TopGradient from '../components/TopGradient';
 import { XIcon } from '../components/icons/XIcon';
-import { useFontScale } from '../hooks/useFontScale';
-import { useIsTablet } from '../hooks/useIsTablet';
-import { useIsDesktop } from '../hooks/useIsDesktop';
 import { useScreenReaderEnabled } from '../hooks/useScreenReaderEnabled';
+import { SESSION_BUTTON_GAP, SESSION_CARD_GAP, useStudyScreenLayout } from '../hooks/useStudyScreenLayout';
 import { colors, layout } from '../theme';
 import { announceForAccessibility } from '../utils/accessibility';
 import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
-
-const HEADER_HEIGHT = 48;
-// Figma Exercise Buttons frame: 4 × 60px buttons + 3 × 12px gaps.
-const BUTTON_HEIGHT = 60;
-const BUTTON_GAP = 12;
-const BUTTONS_HEIGHT = BUTTON_HEIGHT * 4 + BUTTON_GAP * 3;
 
 // Extra time for TalkBack / VoiceOver to finish speaking answer feedback.
 const SCREEN_READER_FEEDBACK_DELAY_MS = 2000;
@@ -46,10 +37,10 @@ export default function SessionScreen({
   onAlreadyKnow,
   onTransitionEnd,
 }) {
-  const insets = useSafeAreaInsets();
-  const isTablet = useIsTablet();
-  const isDesktop = useIsDesktop();
-  const fontScale = useFontScale();
+  const {
+    isTablet, top: topInset, bottom: bottomInset, fontScale,
+    paddingHorizontal, headerHeight, buttonsHeight, cardTop,
+  } = useStudyScreenLayout();
   const screenReaderEnabled = useScreenReaderEnabled();
   const [wrongOptions, setWrongOptions] = useState([]);
   const [resolved, setResolved] = useState(false);
@@ -138,28 +129,13 @@ export default function SessionScreen({
     return undefined;
   };
 
-  // Header sits below the status bar; scroll padding clears it, but the
-  // ScrollView is full-bleed so content can pass under the overlays.
-  const topInset = isTablet
-    ? Math.max(insets.top, layout.tabletScreenPadding)
-    : insets.top + layout.contentTopPadding;
-  const bottomInset = isTablet
-    ? Math.max(insets.bottom, layout.tabletScreenPadding)
-    : Math.max(insets.bottom, layout.screenPaddingBottom);
-  const paddingHorizontal = isTablet
-    ? layout.tabletScreenPadding
-    : layout.screenPaddingX;
-
-  const headerHeight = HEADER_HEIGHT * fontScale;
-  const buttonsHeight = BUTTONS_HEIGHT * fontScale;
-
-  // These are minimums: short viewports scroll and larger text can grow.
-  const contentMinHeight = isTablet
-    ? layout.tabletSessionContentMinHeight
-    : layout.sessionContentMinHeight;
-
   const buttons = (
-    <View style={[styles.buttons, { height: buttonsHeight, gap: BUTTON_GAP * fontScale }]}>
+    <View
+      style={[
+        styles.buttons,
+        { height: buttonsHeight, gap: SESSION_BUTTON_GAP * fontScale },
+      ]}
+    >
       {mode === SESSION_MODES.EXERCISE ? (
         options.map((option, index) => (
           <Button
@@ -172,10 +148,7 @@ export default function SessionScreen({
         ))
       ) : (
         <>
-          <Button
-            title="Learn"
-            onPress={() => handleChoice(onLearn)}
-          />
+          <Button title="Learn" onPress={() => handleChoice(onLearn)} />
           <Button
             title="Already know"
             variant="secondary"
@@ -193,12 +166,9 @@ export default function SessionScreen({
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: isTablet
-              ? Math.max(topInset, bottomInset) + headerHeight
-              : topInset + headerHeight,
-            paddingBottom: isTablet ? Math.max(topInset, bottomInset) + headerHeight : bottomInset,
+            paddingTop: cardTop,
+            paddingBottom: bottomInset,
             paddingHorizontal,
-            justifyContent: isTablet ? 'center' : undefined,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -206,17 +176,8 @@ export default function SessionScreen({
         overScrollMode="never"
         keyboardShouldPersistTaps="handled"
       >
-        {/* Compact column; phone spacer shrinks before the screen scrolls. */}
-        <View
-          style={[styles.container, isTablet ? styles.containerTablet : styles.containerPhone]}
-        >
-          {!isTablet && <View style={styles.spacer} />}
-          <View
-            style={[
-              styles.content,
-              { minHeight: contentMinHeight },
-            ]}
-          >
+        <View style={styles.container}>
+          <View style={styles.content}>
             <CardStack
               ref={cardStackRef}
               word={word}
@@ -228,8 +189,7 @@ export default function SessionScreen({
         </View>
       </ScrollView>
 
-      <TopGradient fillHeight={insets.top} />
-      {/* Figma Header: full padded width on tablet and phone. */}
+      <TopGradient fillHeight={topInset} />
       <View
         pointerEvents="box-none"
         style={[
@@ -237,13 +197,22 @@ export default function SessionScreen({
           { top: topInset, height: headerHeight, paddingHorizontal },
         ]}
       >
-        <View style={[styles.headerContent, isDesktop && styles.headerContentDesktop]}>
-          <IconButton
-            icon={<XIcon />}
-            onPress={onClose}
-            accessibilityLabel="Close session"
+        <View
+          style={[styles.headerContent, isTablet && styles.headerContentWide]}
+        >
+          <View style={isTablet ? styles.closeWide : undefined}>
+            <IconButton
+              icon={<XIcon />}
+              variant="ghost"
+              shadow={false}
+              onPress={onClose}
+              accessibilityLabel="Close session"
+            />
+          </View>
+          <ProgressBar
+            progress={progress}
+            style={isTablet ? styles.progressWide : styles.progress}
           />
-          <ProgressBar progress={progress} />
         </View>
       </View>
     </View>
@@ -267,14 +236,8 @@ const styles = StyleSheet.create({
     maxWidth: layout.compactContentWidth,
     width: '100%',
   },
-  containerPhone: {
-    flexGrow: 1,
-  },
-  containerTablet: {
-    paddingTop: layout.tabletSessionPaddingTop,
-  },
   content: {
-    gap: 24,
+    gap: SESSION_CARD_GAP,
     width: '100%',
   },
   header: {
@@ -289,17 +252,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     width: '100%',
-    maxWidth: layout.sessionHeaderMaxWidth,
   },
-  headerContentDesktop: {
-    maxWidth: layout.desktopSessionHeaderMaxWidth,
-  },
-  spacer: {
-    flexGrow: 1,
-    flexShrink: 1,
-    maxHeight: 64,
-    minHeight: 24,
-  },
+  headerContentWide: { justifyContent: 'center', alignItems: 'flex-start' },
+  closeWide: { position: 'absolute', top: 0, left: 0 },
+  progress: { flex: 1 },
+  progressWide: { width: layout.sessionProgressMaxWidth, maxWidth: '100%' },
   buttons: {
     // Height + gap set inline from fontScale so New Word (2 buttons) keeps
     // Exercise’s 4-button frame and the card doesn’t jump when modes change.

@@ -13,11 +13,11 @@ export default function MetricCard({ value, label }) {
       accessibilityRole="text"
       accessibilityLabel={`${value} ${label}`}
     >
-      <Text style={styles.value} importantForAccessibility="no">
-        {value}
-      </Text>
       <Text style={styles.label} importantForAccessibility="no">
         {label}
+      </Text>
+      <Text style={styles.value} importantForAccessibility="no">
+        {value}
       </Text>
     </View>
   );
