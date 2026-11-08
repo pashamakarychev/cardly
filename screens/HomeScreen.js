@@ -37,6 +37,7 @@ function levelCompletedCopy(levelCompleted, currentLevel) {
 }
 
 export default function HomeScreen({
+  previewWord = null,
   newWords = 0,
   wordsToReview = 0,
   canStart = false,
@@ -81,7 +82,7 @@ export default function HomeScreen({
       >
         <View style={styles.contentFrame}>
           <View style={[styles.content, !isTablet && styles.contentPhone]}>
-            <CardStack word="Hola" nextWord="Adiós" />
+            <CardStack word={previewWord} nextWord={null} />
             <View style={styles.studySession}>
               <AccessibleText style={styles.title} accessibilityRole="header">
                 Study Session

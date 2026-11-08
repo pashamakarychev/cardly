@@ -314,9 +314,9 @@ export const EXERCISE_SOURCES = {
  * 4. Otherwise, if any active words remain, exercise one of them.
  * 5. If nothing left to show, the session is complete.
  *
- * Returns { type: STEP_TYPES.*, exercise? , word? }.
+ * Reads only. Returns { type: STEP_TYPES.*, exercise? , word? }.
  */
-export async function getNextStep(
+export async function selectNextStep(
   db,
   { nativeLanguageName, learningLanguageName, levelName }
 ) {
@@ -342,26 +342,22 @@ export async function getNextStep(
   if ((await getNewWordsRemainingToday(db)) > 0) {
     let word = await getRandomNewWord(db, learningLanguageName, levelName);
 
-    // If the current level was already empty (e.g. after a prior transition
-    // was missed), advance once and try again before giving up on new words.
+    // Preview higher levels without moving the saved level cursor.
     if (word == null) {
-      await resolveLevelAfterNewWordDisplayed(db, learningLanguageName);
-      word = await getRandomNewWord(db, learningLanguageName, levelName);
+      const settings = await getSettings(db);
+      const startIndex = LEVELS.findIndex(
+        (level) => level.toLowerCase() === (settings?.level ?? levelName)?.toLowerCase()
+      );
+      for (const level of LEVELS.slice(startIndex + 1)) {
+        word = await getUndisplayedWordAtLevel(
+          db, LANGUAGE_CODES[learningLanguageName], language, level.toLowerCase()
+        );
+        if (word != null) break;
+      }
     }
 
     if (word != null) {
-      const promotion = await resolveLevelAfterNewWordDisplayed(
-        db,
-        learningLanguageName,
-        word.id
-      );
-      return {
-        type: STEP_TYPES.NEW_WORD,
-        word: {
-          ...word,
-          promotedLevel: promotion?.promotedLevel,
-        },
-      };
+      return { type: STEP_TYPES.NEW_WORD, word };
     }
   }
 
@@ -373,6 +369,29 @@ export async function getNextStep(
   }
 
   return { type: STEP_TYPES.SESSION_COMPLETE };
+}
+
+/** Apply level transitions only when a selected step enters the session. */
+export async function commitNextStep(db, step, learningLanguageName) {
+  if (step.type !== STEP_TYPES.NEW_WORD) return step;
+
+  const settings = await getSettings(db);
+  if (settings?.level?.toLowerCase() !== step.word.level) {
+    await resolveLevelAfterNewWordDisplayed(db, learningLanguageName);
+  }
+  const promotion = await resolveLevelAfterNewWordDisplayed(
+    db, learningLanguageName, step.word.id
+  );
+  return {
+    ...step,
+    word: { ...step.word, promotedLevel: promotion?.promotedLevel },
+  };
+}
+
+/** Session callers keep selection and level updates together. */
+export async function getNextStep(db, options) {
+  const step = await selectNextStep(db, options);
+  return commitNextStep(db, step, options.learningLanguageName);
 }
 
 /** Returns a word from the active queue, starting at active_position. */

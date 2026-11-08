@@ -38,6 +38,8 @@ import {
   getNearestNextReviewAt,
   getNewWordsRemainingToday,
   getNextStep,
+  selectNextStep,
+  commitNextStep,
   getActiveWordsCounts,
   getLevelCompleted,
   clearLevelCompleted,
@@ -138,30 +140,53 @@ function AppContent({ userId, userEmail }) {
   });
   const [levelCompleted, setLevelCompleted] = useState(null);
 
-  const refreshHomeStats = useCallback(async () => {
-    const [
-      newWordsRemaining,
-      dueWords,
-      activeCounts,
-      completedSteps,
-      nextReviewAt,
-      undisplayedNewWords,
-    ] = await Promise.all([
-      getNewWordsRemainingToday(db),
-      getDueLearningWords(db),
-      getActiveWordsCounts(db),
-      getCompletedSteps(db),
-      getNearestNextReviewAt(db),
-      countUndisplayedNewWords(db),
-    ]);
-    setHomeStats({
-      newWords: newWordsRemaining + activeCounts.new,
-      wordsToReview: dueWords.length + activeCounts.review,
-      activeWords: activeCounts.total,
-      completedSteps,
-      nextReviewAt,
-      hasNewWordsAtMidnight: undisplayedNewWords > 0,
-    });
+  const homeStepRef = useRef(null);
+  const homeRefreshRef = useRef(null);
+  const startingSessionRef = useRef(false);
+
+  const refreshHomeStats = useCallback(() => {
+    const request = {};
+    homeRefreshRef.current = request;
+    request.promise = (async () => {
+      const settings = await getSettings(db);
+      const options = {
+        nativeLanguageName: settings?.native_language,
+        learningLanguageName: settings?.learning_language,
+        levelName: settings?.level,
+      };
+      const [
+        newWordsRemaining,
+        dueWords,
+        activeCounts,
+        completedSteps,
+        nextReviewAt,
+        undisplayedNewWords,
+        step,
+      ] = await Promise.all([
+        getNewWordsRemainingToday(db),
+        getDueLearningWords(db),
+        getActiveWordsCounts(db),
+        getCompletedSteps(db),
+        getNearestNextReviewAt(db),
+        countUndisplayedNewWords(db),
+        selectNextStep(db, options),
+      ]);
+      // An older refresh must not overwrite a newer preview after a sync.
+      if (homeRefreshRef.current !== request) return;
+      homeStepRef.current = { step, options };
+      setHomeStats({
+        newWords: newWordsRemaining + activeCounts.new,
+        wordsToReview: dueWords.length + activeCounts.review,
+        activeWords: activeCounts.total,
+        completedSteps,
+        nextReviewAt,
+        hasNewWordsAtMidnight: undisplayedNewWords > 0,
+        previewWord: step.type === STEP_TYPES.EXERCISE
+          ? step.exercise.text
+          : step.word?.text ?? null,
+      });
+    })();
+    return request.promise;
   }, [db]);
 
   useHomeStatsSchedule(db, refreshHomeStats, activeTab === 'home');
@@ -265,6 +290,8 @@ function AppContent({ userId, userEmail }) {
   }, [db, userId, recoveryUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => subscribeToDatabase(db, (source) => {
+    homeStepRef.current = null;
+    homeRefreshRef.current = null;
     if (source === 'remote') {
       getSettings(db).then(async (settings) => {
         if (analyticsReady.current) {
@@ -274,6 +301,9 @@ function AppContent({ userId, userEmail }) {
         await applySettings(settings);
         await refreshHomeStats();
       }).catch(console.error);
+    } else if (!startingSessionRef.current &&
+        navigationRef.getCurrentRoute()?.name === MAIN_ROUTE) {
+      refreshHomeStats().catch(console.error);
     }
   }), [db, refreshHomeStats]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -383,9 +413,30 @@ function AppContent({ userId, userEmail }) {
   };
 
   const handleStart = async () => {
-    const session = await syncSessionProgress(db);
-    setProgress(session.progress);
-    await continueSession();
+    if (startingSessionRef.current) return;
+    startingSessionRef.current = true;
+    try {
+      if (homeStepRef.current == null) await refreshHomeStats();
+      // A timer or sync may start a newer refresh while this one is pending.
+      let request;
+      do {
+        request = homeRefreshRef.current;
+        await request?.promise;
+      } while (request !== homeRefreshRef.current);
+      const prepared = homeStepRef.current;
+      const session = await syncSessionProgress(db);
+      setProgress(session.progress);
+      if (prepared != null) {
+        await showStep(await commitNextStep(
+          db, prepared.step, prepared.options.learningLanguageName
+        ));
+      } else {
+        await continueSession();
+      }
+      homeStepRef.current = null;
+    } finally {
+      startingSessionRef.current = false;
+    }
   };
 
   // Prefetch the next step while card feedback/transition plays. Once resolved,
@@ -752,6 +803,7 @@ function AppContent({ userId, userEmail }) {
                   });
                 }}
                 homeProps={{
+                  previewWord: homeStats.previewWord,
                   newWords: homeStats.newWords,
                   wordsToReview: homeStats.wordsToReview,
                   canStart:
