@@ -154,9 +154,9 @@ function CardStack(
       inputRange: [0, 1],
       outputRange: [1, BACK_SCALE],
     });
-    const frontColorOpacity = pose.interpolate({
+    const backgroundColor = pose.interpolate({
       inputRange: [0, 1],
-      outputRange: [1, 0],
+      outputRange: [colors.textCardSecondary, colors.textCard],
     });
 
     return (
@@ -176,24 +176,11 @@ function CardStack(
           style={[
             styles.card,
             {
-            // Keep the base fill on the animated native view itself. Some
-            // Android builds fail to composite the nested absolute faces
-            // during ScrollView layout, leaving the card transparent.
-            backgroundColor: colors.textCard,
+              backgroundColor,
               transform: [{ translateX }, { translateY }, { scale }],
             },
           ]}
         >
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.cardFace,
-              {
-                backgroundColor: colors.textCardSecondary,
-                opacity: frontColorOpacity,
-              },
-            ]}
-          />
           <Text
             style={styles.word}
             numberOfLines={1}
@@ -252,10 +239,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-  },
-  cardFace: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 32,
   },
   wordFocusTarget: {
     position: 'absolute',
