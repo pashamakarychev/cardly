@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import Button from '../components/Button';
 import CardStack from '../components/CardStack';
@@ -15,6 +15,10 @@ import { capitalizeWord, TEST_CARD_WORD } from '../utils/text';
 
 // Extra time for TalkBack / VoiceOver to finish speaking answer feedback.
 const SCREEN_READER_FEEDBACK_DELAY_MS = 2000;
+const ANSWER_FEEDBACK_DELAY_MS = 300;
+const BUTTONS_FADE_OUT_DURATION = 120;
+const BUTTONS_ENTER_OFFSET = 24;
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export const SESSION_MODES = {
   EXERCISE: 'exercise',
@@ -28,6 +32,7 @@ export default function SessionScreen({
   mode = SESSION_MODES.EXERCISE,
   word = 'Hola',
   nextWord,
+  nextButtons,
   options = ['Hello', 'Book', 'City', 'Food'],
   correctAnswer = 'Hello',
   progress = 0.3,
@@ -46,9 +51,13 @@ export default function SessionScreen({
   const [resolved, setResolved] = useState(false);
   const cardStackRef = useRef(null);
   const triggerTimeoutRef = useRef(null);
+  const buttonsOpacity = useRef(new Animated.Value(1)).current;
+  const [incomingButtonsPose, setIncomingButtonsPose] = useState(null);
+  const buttonsAnimationRef = useRef(null);
 
   useEffect(
     () => () => {
+      buttonsAnimationRef.current?.stop();
       if (triggerTimeoutRef.current !== null) {
         clearTimeout(triggerTimeoutRef.current);
       }
@@ -59,6 +68,9 @@ export default function SessionScreen({
   // Reset in the same batch as the parent advancing the round, so the next
   // round renders with clean buttons.
   const handleTransitionEnd = () => {
+    buttonsAnimationRef.current?.stop();
+    buttonsOpacity.setValue(1);
+    setIncomingButtonsPose(null);
     setWrongOptions([]);
     setResolved(false);
     onTransitionEnd?.();
@@ -66,7 +78,7 @@ export default function SessionScreen({
 
   // Prefetch decides whether another card follows. The last word skips the
   // swap and advances straight to session complete.
-  const resolveRound = (action) => {
+  const resolveRound = (action, feedbackDelayMs = 0) => {
     const pending = Promise.resolve(action?.());
     setResolved(true);
 
@@ -75,10 +87,18 @@ export default function SessionScreen({
         handleTransitionEnd();
         return;
       }
-      cardStackRef.current?.playTransition();
+      buttonsAnimationRef.current?.stop();
+      buttonsAnimationRef.current = Animated.timing(buttonsOpacity, {
+        toValue: 0,
+        duration: BUTTONS_FADE_OUT_DURATION,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: USE_NATIVE_DRIVER,
+      });
+      buttonsAnimationRef.current.start();
+      cardStackRef.current?.playTransition(setIncomingButtonsPose);
     };
 
-    if (!screenReaderEnabled) {
+    if (!screenReaderEnabled && feedbackDelayMs === 0) {
       pending.then(startOrFinish);
       return;
     }
@@ -86,7 +106,7 @@ export default function SessionScreen({
     triggerTimeoutRef.current = setTimeout(() => {
       triggerTimeoutRef.current = null;
       pending.then(startOrFinish);
-    }, SCREEN_READER_FEEDBACK_DELAY_MS);
+    }, screenReaderEnabled ? SCREEN_READER_FEEDBACK_DELAY_MS : feedbackDelayMs);
   };
 
   const handleAnswer = (option) => {
@@ -109,7 +129,7 @@ export default function SessionScreen({
     }
 
     const firstAttemptCorrect = wrongOptions.length === 0;
-    resolveRound(() => onAnswer?.(firstAttemptCorrect));
+    resolveRound(() => onAnswer?.(firstAttemptCorrect), ANSWER_FEEDBACK_DELAY_MS);
   };
 
   const handleChoice = (action) => {
@@ -129,20 +149,34 @@ export default function SessionScreen({
     return undefined;
   };
 
+  // Use the incoming card's pose so both transitions finish on the same frame.
+  const incomingButtons = incomingButtonsPose == null ? null : nextButtons;
+  const visibleMode = incomingButtons?.mode ?? mode;
+  const visibleOptions = incomingButtons?.options ?? options;
   const buttons = (
-    <View
+    <Animated.View
+      pointerEvents={resolved ? 'none' : 'auto'}
       style={[
         styles.buttons,
-        { height: buttonsHeight, gap: SESSION_BUTTON_GAP * fontScale },
+        {
+          height: buttonsHeight,
+          gap: SESSION_BUTTON_GAP * fontScale,
+          opacity: incomingButtons
+            ? incomingButtonsPose.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
+            : buttonsOpacity,
+          transform: [{ translateY: incomingButtons
+            ? incomingButtonsPose.interpolate({ inputRange: [0, 1], outputRange: [0, BUTTONS_ENTER_OFFSET] })
+            : 0 }],
+        },
       ]}
     >
-      {mode === SESSION_MODES.EXERCISE ? (
-        options.map((option, index) => (
+      {visibleMode === SESSION_MODES.EXERCISE ? (
+        visibleOptions.map((option, index) => (
           <Button
             key={`${index}-${option}`}
             title={capitalizeWord(TEST_CARD_WORD ?? option)}
             variant="secondary"
-            status={statusFor(option)}
+            status={incomingButtons ? undefined : statusFor(option)}
             onPress={() => handleAnswer(option)}
           />
         ))
@@ -156,7 +190,7 @@ export default function SessionScreen({
           />
         </>
       )}
-    </View>
+    </Animated.View>
   );
 
   return (

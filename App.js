@@ -324,7 +324,7 @@ function AppContent({ userId, userEmail }) {
   // so the round can advance in the same batch as the card slot swap.
   const pendingStepRef = useRef(null);
   const resolvedStepRef = useRef(null);
-  const [upcomingWord, setUpcomingWord] = useState(null);
+  const [upcomingStep, setUpcomingStep] = useState(null);
 
   const prepareNextStep = () =>
     getNextStep(db, {
@@ -440,7 +440,7 @@ function AppContent({ userId, userEmail }) {
   };
 
   // Prefetch the next step while card feedback/transition plays. Once resolved,
-  // upcomingWord is set so the card revealed by the lift already shows it.
+  // upcomingStep supplies the revealed card and its incoming answer buttons.
   // The round itself only advances in handleCardTransitionEnd.
   // Returns whether the card stack should animate (false for the last card).
   const queueNextStep = (prepare) => {
@@ -449,7 +449,7 @@ function AppContent({ userId, userEmail }) {
     return pending.then(({ step, shouldAnimate }) => {
       if (pendingStepRef.current === pending) {
         resolvedStepRef.current = step;
-        setUpcomingWord(stepUpcomingWord(step));
+        setUpcomingStep(step);
       }
       return shouldAnimate;
     });
@@ -514,7 +514,7 @@ function AppContent({ userId, userEmail }) {
     const pending = pendingStepRef.current;
     resolvedStepRef.current = null;
     pendingStepRef.current = null;
-    setUpcomingWord(null);
+    setUpcomingStep(null);
 
     if (step != null) {
       showStep(step);
@@ -557,7 +557,7 @@ function AppContent({ userId, userEmail }) {
   const clearPendingSession = () => {
     pendingStepRef.current = null;
     resolvedStepRef.current = null;
-    setUpcomingWord(null);
+    setUpcomingStep(null);
   };
 
   // Pop back to Main when possible so the close animation mirrors Android
@@ -644,7 +644,12 @@ function AppContent({ userId, userEmail }) {
       <SessionScreen
         mode={sessionMode}
         word={roundWord.text}
-        nextWord={upcomingWord}
+        nextWord={upcomingStep == null ? null : stepUpcomingWord(upcomingStep)}
+        nextButtons={upcomingStep?.type === STEP_TYPES.EXERCISE
+          ? { mode: SESSION_MODES.EXERCISE, options: upcomingStep.exercise.options }
+          : upcomingStep?.type === STEP_TYPES.NEW_WORD
+            ? { mode: SESSION_MODES.NEW_WORD }
+            : null}
         options={isNewWord ? undefined : currentWord.options}
         correctAnswer={isNewWord ? undefined : currentWord.correctAnswer}
         progress={progress}

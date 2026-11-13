@@ -55,7 +55,7 @@ function CardStack(
 
   const displayWord = capitalizeWord(TEST_CARD_WORD ?? word);
 
-  const playTransition = useCallback(() => {
+  const playTransition = useCallback((onSwapStart) => {
     if (animatingRef.current) {
       return;
     }
@@ -80,6 +80,7 @@ function CardStack(
 
       // The next card is exposed: put it on top, then swap poses in parallel.
       setTopSlot(to);
+      onSwapStart?.(poses[to]);
 
       Animated.parallel([
         Animated.timing(lifts[from], {
