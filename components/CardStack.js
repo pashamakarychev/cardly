@@ -158,6 +158,10 @@ function CardStack(
       inputRange: [0, 1],
       outputRange: [colors.textCardSecondary, colors.textCard],
     });
+    const borderColor = pose.interpolate({
+      inputRange: [0, 1],
+      outputRange: [colors.cardStrokeFront, colors.cardStrokeBack],
+    });
 
     return (
       <View
@@ -177,6 +181,7 @@ function CardStack(
             styles.card,
             {
               backgroundColor,
+              borderColor,
               transform: [{ translateX }, { translateY }, { scale }],
             },
           ]}
@@ -235,10 +240,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 32,
+    borderWidth: 2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 14, // Preserve the content inset with the 2px inside stroke.
   },
   wordFocusTarget: {
     position: 'absolute',

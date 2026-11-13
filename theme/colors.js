@@ -34,6 +34,8 @@ export const colors = {
   textInverse: palette.white,
   textCard: palette.gray600,
   textCardSecondary: palette.gray500,
+  cardStrokeFront: '#262626',
+  cardStrokeBack: palette.gray500,
 
   primary: palette.azure100,
   primaryPressed: palette.azure200,
